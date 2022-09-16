@@ -1268,7 +1268,7 @@ This option is an alternative to config_options.  (If both options
 are specifed, then config_options  will take precedence.)
 
 If config_filespec is an empty string, then the filespec will default
-to $HOME\ghcn_fetch.yaml (%UserProfile% on Windows).
+to $HOME\.ghcn_fetch.yaml (%UserProfile% on Windows).
 
 If config_filespec is undef, then an empty configuration will be
 used; i.e. there will be no cache and no aliases.
@@ -2103,18 +2103,70 @@ method _report_gaps ($stn, $gaps_href) {
 
 sub _get_config_options ($config_file=$EMPTY) {
 
+    #debug# use DDP;
+    #debug# use Log::Dispatch;
+    #debug# my $log = Log::Dispatch->new(
+    #debug#     outputs => [
+    #debug#         [ 'File',   min_level => 'debug', filename => 'c:/sandbox/log.log' ],
+    #debug#         [ 'Screen', min_level => 'debug' ],
+    #debug#         
+    #debug#     ]
+    #debug# );
+
+    my $config_href = {};
+    
     # passing undef will result in an empty config
-    return {} if not defined $config_file;
+    return $config_href if not defined $config_file;
 
     #debug# use FindBin;
-    #debug# use DDP;
     #debug# open my $fh, '>>', 'c:/sandbox/log.log' or die;
-    #debug# say {$fh} 'program ', $0;
-    #debug# say {$fh} 'caller ', join ' | ', caller;
-    #debug# say {$fh} 'received config_file:           ', $config_file;
-    
+    #debug# $log->debug( 'program ' . $0                                   );
+    #debug# $log->debug( 'caller ' . join(' | ', caller)                   );
+    #debug# $log->debug( 'received config_file:           ' . $config_file );
+
+    my $config_filespec = $config_file eq $EMPTY
+                        ? _get_default_config_filespec()
+                        : $config_file
+                        ;
+
+    my $yaml_struct;
+    my $msg = $EMPTY;
+
+    # uncoverable branch false
+    if (-e $config_filespec) {
+        # uncoverable branch false
+        try {
+            $yaml_struct = YAML::Tiny->read($config_filespec);
+        } catch {
+            $msg = '*W* no cache or aliases: failed reading YAML in ' . $config_filespec;
+            carp $msg;
+        }
+    } else {
+        return $config_href;
+    }
+
+    $config_href = $yaml_struct->[0]
+        if $yaml_struct;
+
+    #debug# $log->( 'yaml_struct length = ' . length $yaml_struct );
+    #debug# $log->( "\n" );
+    #debug# $log->( 'config_filespec:                ' . $config_filespec );
+    #debug# $log->( 'carp ' . $msg );
+    #debug# $log->( 'FindBin::Bin                    ' . $FindBin::Bin );
+    #debug# $log->( "\n");
+    #debug# $log->( 'config_href ' . np($config_href) );
+    #debug# $log->( "\n" );
+    #debug# $log->( "================" );
+    #debug# $log->( "\n" );
+    #debug# close $fh;
+
+    return $config_href;
+}
+
+sub _get_default_config_filespec () {
+
     # an EMPTY arg will default to $HOME/.ghcn_fetch.yaml
-    $config_file ||= $CONFIG_FILE;
+    my $config_file ||= $CONFIG_FILE;
 
     my $homedir = File::HomeDir->my_home;
     #debug# say {$fh} 'homedir:                        ', $homedir;
@@ -2127,42 +2179,10 @@ sub _get_config_options ($config_file=$EMPTY) {
 
     if ( not File::Spec->file_name_is_absolute($config_filespec) ) {
         $config_filespec = File::Spec->catfile( $homedir, $config_filespec );       
-    #debug# say {$fh} 'config_filespec wasnt absolute: ', $config_filespec;
-    }
-
-    my $yaml_struct;
-    my $config_href = {};
-    my $msg = '';
-
-    # uncoverable branch false
-    if (-r $config_filespec) {
-        # uncoverable branch false
-        try {
-            $yaml_struct = YAML::Tiny->read($config_filespec);
-        } catch {
-            $msg = '*W* no cache or aliases: failed reading YAML in ' . $config_filespec;
-            carp $msg;
-        }
-    } else {
-        croak '*E* unreadable config file: ' . $config_filespec;
+        #debug# say {$fh} 'config_filespec wasnt absolute: ', $config_filespec;
     }
     
-    $config_href = $yaml_struct->[0]
-        if $yaml_struct;
-
-    #debug# say {$fh} 'yaml_struct length = ', length $yaml_struct;
-    #debug# say {$fh} "\n";
-    #debug# say {$fh} 'config_filespec:                ', $config_filespec;
-    #debug# say {$fh} 'carp ', $msg;
-    #debug# say {$fh} 'FindBin::Bin                    ', $FindBin::Bin;
-    #debug# say {$fh} "\n";
-    #debug# say {$fh} 'config_href ', np $config_href;
-    #debug# say {$fh} "\n";
-    #debug# say {$fh} "================";
-    #debug# say {$fh} "\n";
-    #debug# close $fh;
-
-    return $config_href;
+    return $config_filespec;
 }
 
 #----------------------------------------------------------------------
