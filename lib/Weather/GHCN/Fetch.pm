@@ -149,9 +149,9 @@ B<Find the 5-day heatwaves at the JFK airport station:>
 
 C<ghcn_fetch id -cou US -st NY -location "New York JFK" | ghcn_extremes>
 
-B<Find the 3-day coldwaves at the JFK airport station:>
+B<Find the 3-day coldwaves (<= 15C) at the JFK airport station:>
 
-C<ghcn_fetch id -cou US -st NY -location "New York JFK" | ghcn_extremes -cold -ndays 3>
+C<ghcn_fetch id -cou US -st NY -location "New York JFK" | ghcn_extremes -cold -ndays 3 -limit -15>
 
 B<For each year between 1900 and 1950, count the number of active weather stations in NY state:>
 
