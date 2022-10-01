@@ -73,7 +73,7 @@ use Devel::Size;
 use File::HomeDir;
 use File::Spec;
 use FindBin;
-use GIS::Distance;
+use Math::Trig;
 use Time::Piece;
 use Try::Tiny;
 use URI::Fetch;
@@ -1115,7 +1115,6 @@ method load_stations () {
     $_tstats->start('Parse_stn');
 
     my %stnidx;
-    my $gps = GIS::Distance->new;
 
     # Scan the station table
     # - filtering on country, state, location and GIS distance according to options
@@ -1158,8 +1157,8 @@ method load_stations () {
 
         if ( $Opt->gps ) {
             my ($opt_lat, $opt_long) = split m{[,;\s]}xms, $Opt->gps;
-            my $distance = $gps->distance($opt_lat, $opt_long, $lat, $long);
-            next if $distance->kilometers > $Opt->radius;
+            my $distance = _gis_distance($opt_lat, $opt_long, $lat, $long);
+            next if $distance > $Opt->radius;
         }
 
         my $gsn = $gsn_flag eq 'GSN' ? 'GSN' : $EMPTY;
@@ -2175,6 +2174,27 @@ sub _get_kml_color ($color_opt) {
     return unless $kml_colors{$c};
 
     return $kml_colors{$c}->[1];
+}
+
+#----------------------------------------------------------------------
+# -gps Helper Functions
+#----------------------------------------------------------------------
+
+# Calculate geographic distances in kilometers between coordinates in 
+# geodetic WGS84 format using the Haversine formula.
+
+sub _gis_distance ($lat1, $lon1, $lat2, $lon2) {
+    $lon1 = deg2rad($lon1);
+    $lat1 = deg2rad($lat1);
+    $lon2 = deg2rad($lon2);
+    $lat2 = deg2rad($lat2);
+
+    my $dlon = $lon2 - $lon1;
+    my $dlat = $lat2 - $lat1;
+    my $a = (sin($dlat/2)) ** 2 + cos($lat1) * cos($lat2) * (sin($dlon/2)) ** 2;
+    my $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+
+    return 6371640 * $c / 1000.0;
 }
 
 #----------------------------------------------------------------------
