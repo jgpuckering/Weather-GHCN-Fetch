@@ -292,19 +292,19 @@ sub run ($progname, $argv_aref) {
     if ($Opt->report) {
         say $ghcn->get_header;
 
-        # this prints detailed station data if $Opt->report eq 'id'
+        # this prints detailed station data if $Opt->report eq 'detail'
         $ghcn->load_data(
             # set a callback routine for printing progress messages
             progress_sub => sub { say {*STDERR} @_ },
-            # set a callback routine for printing rows when -report id
+            # set a callback routine for printing rows when -report detail
             row_sub      => sub { say join "\t", @{ $_[0] } },
         );
 
-        if ($Opt->report eq 'id' and $Opt->nogaps) {
+        if ($Opt->report eq 'detail' and $Opt->nogaps) {
             say $ghcn->get_missing_rows;
         }
 
-        # these only do something when $Opt->report ne 'id'
+        # these only do something when $Opt->report ne 'detail'
         $ghcn->summarize_data;
         say $ghcn->get_summary_data;
         say $EMPTY;

@@ -76,7 +76,7 @@ pages for the selected stations are scanned and the data from them
 aggregated and output as one row per designated period.  This is
 followed by the station list.
 
-If report type 'id' is given, then the daily data for each selected
+If report type 'detail' is given, then the daily data for each selected
 station id is reported, followed by the station list.
 
 The report type can be abbreviated; e.g. d or da for daily.  The report
@@ -111,12 +111,12 @@ Abbrevations are permitted.
 
 =over 4
 
-=item -report station
+=item -report "" (or omitted)
 
-Generate a list of the stations which match the criteria provided
-(location, geo coordinates, ranges etc.)  This is the default when
-no report type is requested.  No actual weather data is accessed; only
-station data.
+This is the default option when no report option is provided, or when
+the option is an empty string.  It generates a list of the stations 
+which match the criteria provided (location, geo coordinates, ranges 
+etc.)  No actual weather data is accessed; only station data.
 
 =item -report daily
 
@@ -143,7 +143,7 @@ the measure for monthly average temperature.
 Same as -daily except the output is summarized to the year level.
 See the explanation of TAVG vs Avg on -monthly.
 
-=item -report id
+=item -report detail
 
 Break the selected aggregation level down by station id and include
 the station id in the output.  This is like -daily, but with a
@@ -299,7 +299,7 @@ be averaged across stations and also across months or years if
 
 =item -nogaps
 
-For report 'id', generate rows for those months and days where data
+For report 'detail', generate rows for those months and days where data
 is missing.  This enables charting with a complete time x-axis.
 Without it, large gaps result in horizontal compression of the
 chart and a distorted picture across time.

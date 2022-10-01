@@ -509,7 +509,7 @@ method get_header ( %args ) {
     my $return_list = $args{list} // $_return_list;
 
     # if this is a summary report, then alter the measure column labels
-    if ( not $Opt->report eq 'id' ) {
+    if ( not $Opt->report eq 'detail' ) {
         foreach my $label ($_measures_obj->measures) {
             $label =~ s{ \A TMAX }{TMAX max}xms;
             $label =~ s{ \A TMIN }{TMIN min}xms;
@@ -527,7 +527,7 @@ method get_header ( %args ) {
     }
 
     my $includes_month =
-        $Opt->report eq 'id'    ||
+        $Opt->report eq 'detail'    ||
         $Opt->report eq 'daily' ||
         $Opt->report eq 'monthly';
 
@@ -536,7 +536,7 @@ method get_header ( %args ) {
     my @output;
     push @output, 'Year';
     push @output, 'Month'      if $includes_month;
-    push @output, 'Day'        if $Opt->report eq 'id' or $Opt->report eq 'daily';
+    push @output, 'Day'        if $Opt->report eq 'detail' or $Opt->report eq 'daily';
     push @output, 'Decade';
     push @output, 'S_Decade'   if $includes_month;
     push @output, 'S_Year'     if $includes_month;
@@ -545,11 +545,11 @@ method get_header ( %args ) {
     $_measure_begin_idx = @output;
     push @output, $_measures_obj->measures;
 
-    push @output, 'QFLAGS'     if $Opt->report eq 'id';
-    push @output, 'StationId'  if $Opt->report eq 'id';
-    push @output, 'Location'   if $Opt->report eq 'id';
-    push @output, 'StnIdx'     if $Opt->report eq 'id';
-    push @output, 'Grid'       if $Opt->report eq 'id';
+    push @output, 'QFLAGS'     if $Opt->report eq 'detail';
+    push @output, 'StationId'  if $Opt->report eq 'detail';
+    push @output, 'Location'   if $Opt->report eq 'detail';
+    push @output, 'StnIdx'     if $Opt->report eq 'detail';
+    push @output, 'Grid'       if $Opt->report eq 'detail';
 
     return $return_list ? @output : join $TAB, @output;
 }
@@ -830,7 +830,7 @@ method get_station_note_list () {
 Gets a list of summarized the temperature or precipitation data
 by day, month or year depending on the report option.
 
-Returns undef if the report option is 'id'.
+Returns undef if the report option is 'detail'.
 
 The actual columns that are returned is dictated by the report option
 and by the tavg and precip options provided when the object was
@@ -860,9 +860,9 @@ those years that are within the specified range(s).
 method get_summary_data ( %args ) {
     my $return_list = $args{list} // $_return_list;
 
-    # when an 'id' report is requested, we generate detail data only
+    # when an 'detail' report is requested, we generate detail data only
     # so there is no summary data to print
-    return if $Opt->report eq 'id';
+    return if $Opt->report eq 'detail';
 
     my @output;
 
@@ -961,7 +961,7 @@ method has_missing_data () {
 =head2 load_data ( progress_sub => undef, row_sub => sub { say @_ } )
 
 Load the daily weather data for each of the stations that are were
-loaded into the collection.  Print the data if option report id is
+loaded into the collection.  Print the data if option report detail is
 given.  Otherwise cache the data so it can be aggregated at a later
 step.
 
@@ -978,12 +978,12 @@ progress => sub{ say {STDERR} @_ }.
 
 Optional callback hook to allow the caller to provide their own
 subroutine for printing (or collecting in a list, or both) the
-row-level station data that is fetched when the report option is 'id'.
+row-level station data that is fetched when the report option is 'detail'.
 Defaults to printing via the 'say' operator.
 
 =item option: report <id|daily|monthly|yearly>
 
-When report id is specified, the weather data for each station is
+When report detail is specified, the weather data for each station is
 printed immediately (via the row_sub callback hook).
 
 For all other report options, the data is fetched from each station
@@ -1022,7 +1022,7 @@ method load_data ( %args ) {
 
         my $insufficient_quality = $self->_load_daily_data($stn, $content);
 
-        if ( $Opt->report eq 'id' ) {
+        if ( $Opt->report eq 'detail' ) {
             $self->_print_detail_data( $_measure_begin_idx, $stn, $row_callback );
         } else {
             $self->_aggregate_station_data($stn)
@@ -1372,7 +1372,7 @@ according to the report option.
 
 =item option: report => 'daily|monthly|yearly'
 
-When the report option is 'id', no summarization is needed and the
+When the report option is 'detail', no summarization is needed and the
 method immediately returns undef.
 
 =back
@@ -1382,9 +1382,9 @@ method immediately returns undef.
 
 method summarize_data () {
 
-    # when an 'id' report is requested, we generate detail data only
+    # when an 'detail' report is requested, we generate detail data only
     # so there is no need to summarize data.
-    return if $Opt->report eq 'id';
+    return if $Opt->report eq 'detail';
 
     # We'll be replacing $_aggregate_href with this hash after we're
     # done, but we can't loop over $_aggregate_href and be changing
@@ -2319,12 +2319,12 @@ sub _days_in_month ($year, $month) {
     return _timepiece($year, $month)->month_last_day;
 }
 
-sub _days_in_year ($year) {   
+sub _days_in_year ($year) {
     ## no critic [ProhibitMagicNumbers]
     return 365 + _is_leap_year($year);
 }
 
-sub _is_leap_year ($year) {  
+sub _is_leap_year ($year) {
     return _timepiece($year)->is_leap_year;
 }
 
@@ -2425,15 +2425,15 @@ sub _memsize ( $ref, $opt_performance ) {
   if ($opt->report) {
       say $ghcn->get_header;
 
-      # this also prints detailed station data if $opt->report eq 'id'
+      # this also prints detailed station data if $opt->report eq 'detail'
       $ghcn->load_data(
         # set a callback routine for printing progress messages
         progress_sub => sub { say {*STDERR} @_ },
-        # set a callback routine for capturing data rows when report => 'id'
+        # set a callback routine for capturing data rows when report => 'detail'
         row_sub      => sub { push @rows, $_[0] },
       );
 
-      # these only do something when $opt->report ne 'id'
+      # these only do something when $opt->report ne 'detail'
       $ghcn->summarize_data;
       say $ghcn->get_summary_data;
 
@@ -2444,7 +2444,7 @@ sub _memsize ( $ref, $opt_performance ) {
       say $ghcn->get_flag_statistics;
   }
 
-  # print data rows collected by row_sub callback (when report => 'id')
+  # print data rows collected by row_sub callback (when report => 'detail')
   foreach my $row_aref (@rows) {
       say join "\t", $row_aref->@*;
   }
@@ -2543,7 +2543,7 @@ structure:
 
 See B<ghcn_fetch.pl -help> for a list of all user options in Getopts::Long
 format.  Simply translate to a hash key/value pair.  For example,
-B<-report id> becomes B<report => 'id'>.
+B<-report detail> becomes B<report => 'detail'>.
 
 =head1 VERSIONING and COMPATIBILITY
 

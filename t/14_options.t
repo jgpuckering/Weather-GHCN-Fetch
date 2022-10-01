@@ -76,7 +76,7 @@ subtest 'get methods' => sub {
     my @options = grep { m{ \A \w+ [=!] }xms } @got;
     ok @options > 20, 'get_getopt_list returned a GetOpt list';
 
-    $href = Weather::GHCN::Options->get_option_choices(); 
+    $href = Weather::GHCN::Options->get_option_choices();
     ok ref $href eq 'HASH', 'get_option_choices returned a hash';
     ok $href->{'report'}, 'get_option_choices hash has a report key';
     ok $href->{'refresh'}, 'get_option_choices hash has a refresh key';
@@ -356,7 +356,7 @@ subtest 'validate - report' => sub {
     my @testopts = (
         [ q/                 /, 1 ],
         [ q/ -report ""      /, 1 ],
-        [ q/ -report id      /, 1 ],
+        [ q/ -report detail  /, 1 ],
         [ q/ -report daily   /, 1 ],
         [ q/ -report monthly /, 1 ],
         [ q/ -report yearly  /, 1 ],
@@ -502,7 +502,7 @@ subtest 'for test coverage' => sub {
     ok $opt->opt_href,      'field accessor: opt_href';
     ok $opt->opt_obj,       'field accessor: opt_href';
     ok $opt->config_href,   'field accessor: opt_href';
-    
+
     my $config_href = {
         aliases => {
             nacenter => 'USC00326365',
@@ -513,13 +513,13 @@ subtest 'for test coverage' => sub {
 
     ok !@errors, 'location alias nacenter is ok';
     is $opt->opt_obj->location, 'USC00326365', 'Hash::Wrap method location value USC00326365';
-    is $opt->opt_href->{'location'}, 'USC00326365', 'opt_href contains key location value USC00326365';   
+    is $opt->opt_href->{'location'}, 'USC00326365', 'opt_href contains key location value USC00326365';
     is $opt->opt_href->{'locationXXX'}, undef, 'opt_href access via mispelled key returns undef';
     throws_ok
         { $opt->opt_obj->locationXXX }
         qr/Can't locate object method "locationXXX"/,
         'opt_obj access via mispelled key throws exception';
-    
+
 
 
     $user_options = '-country West';

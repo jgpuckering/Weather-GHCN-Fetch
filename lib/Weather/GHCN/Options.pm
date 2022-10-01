@@ -81,7 +81,7 @@ my $Tk_opt_table = [
             [ 'yearly summary',     'yearly' ],
             [ 'monthly summary',    'monthly' ],
             [ 'daily summary',      'daily' ],
-            [ 'station (id) level', 'id' ],
+            [ 'detail level',       'detail' ],
         ]
     ],
     ['', '', '-'],
@@ -626,7 +626,7 @@ method validate () {
     # to $opt_obj->report (or $opt_obj->refresh) has already been replaced,
     # and validation and error reporting has been done done.
 
-    my %report_abbrev = abbrev( qw(id daily monthly yearly) );
+    my %report_abbrev = abbrev( qw(detail daily monthly yearly) );
 
     my $report = lc $opt_obj->report;
 

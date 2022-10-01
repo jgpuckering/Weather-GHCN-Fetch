@@ -48,16 +48,16 @@ is $matches, 11, 'Weather::GHCN::App::Fetch returned 9 entries for NEW YORK';
 is Weather::GHCN::App::Fetch::deabbrev_report_type('da'), 'daily', 'deabbrev_report_type';
 is Weather::GHCN::App::Fetch::deabbrev_refresh_option('y'), 'yearly', 'deabbrev_refresh_option';
 
-local @ARGV = qw(-report id);
+local @ARGV = qw(-report detail);
 
 my $opt_href = Weather::GHCN::App::Fetch::get_user_options_no_tk;
-is $opt_href->{'report'}, 'id', 'get_user_options_no_tk';
+is $opt_href->{'report'}, 'detail', 'get_user_options_no_tk';
 
-@ARGV = qw(-report id);
+@ARGV = qw(-report detail);
 
 if ( check_install(module=>'Tk') and check_install(module=>'Tk::Getopt')) {
     $opt_href = Weather::GHCN::App::Fetch::get_user_options_tk;
-    is $opt_href->{'report'}, 'id', 'get_user_options_tk';   
+    is $opt_href->{'report'}, 'detail', 'get_user_options_tk';   
 } else {
     ok 1, 'Tk or Tk::Getopt not installed';
 }
@@ -65,7 +65,7 @@ if ( check_install(module=>'Tk') and check_install(module=>'Tk::Getopt')) {
 my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 
 @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
-ok Weather::GHCN::App::Fetch::valid_report_type('id', \@opttable),   'valid_report_type - id valid';
+ok Weather::GHCN::App::Fetch::valid_report_type('detail', \@opttable),   'valid_report_type - detail valid';
 ok !Weather::GHCN::App::Fetch::valid_report_type('xxx', \@opttable), 'valid_report_type - xxx invalid';
 
 ok Weather::GHCN::App::Fetch::valid_refresh_option('never', \@opttable),   'valid_refresh_option - never valid';

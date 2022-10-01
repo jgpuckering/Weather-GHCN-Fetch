@@ -194,7 +194,7 @@ subtest 'station list (-report "")' => sub {
     is $count, 5, 'export_kml output looks good';
 };
 
-subtest 'station-level data (-report id)' => sub {
+subtest 'station-level data (-report detail)' => sub {
 
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
@@ -203,7 +203,7 @@ subtest 'station-level data (-report id)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 active      => '',
-                report      => 'id',
+                report      => 'detail',
                 refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
@@ -224,7 +224,7 @@ subtest 'station-level data (-report id)' => sub {
     is @hdr, 15, 'get_header returned 15 header columns';
 
     $ghcn->load_data(
-        # set a callback routine for capturing data rows when report => 'id'
+        # set a callback routine for capturing data rows when report => 'detail'
         row_sub => sub { push @rows, $_[0] },
     );
     is @rows, 365, '365 rows returned for year 1900';
@@ -447,7 +447,7 @@ subtest 'reload with new options' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 active      => '',
-                report      => 'id',
+                report      => 'detail',
                 refresh   => $Refresh,
             };
 
@@ -455,7 +455,7 @@ subtest 'reload with new options' => sub {
             user_options => $uo_href,
             config_options => $cache_for_testing,
         );
-    ok $opt, '------- set_options 1: -loc CA006105976 -range 1900-1900 -active "" -report id';
+    ok $opt, '------- set_options 1: -loc CA006105976 -range 1900-1900 -active "" -report detail';
 
     is @errors, 0, 'set_options return no errors';
 
@@ -469,7 +469,7 @@ subtest 'reload with new options' => sub {
     is @hdr, 15, '15 header columns';
 
     $ghcn->load_data(
-        # set a callback routine for capturing data rows when report => 'id'
+        # set a callback routine for capturing data rows when report => 'detail'
         row_sub => sub { push @rows, $_[0] },
     );
     ok @rows, '------- load_data 1';
@@ -506,7 +506,7 @@ subtest 'reload with new options' => sub {
 
     @rows = ();
     $ghcn->load_data(
-        # set a callback routine for capturing data rows when report => 'id'
+        # set a callback routine for capturing data rows when report => 'detail'
         row_sub => sub { push @rows, $_[0] },
     );
     ok @rows, '------- load_data 2';
@@ -597,7 +597,7 @@ subtest 'station list (-gps "40.7789 -73.9692" -radius 12)' => sub {
 
 };
 
-subtest 'station-level data (-report id)' => sub {
+subtest 'station-level data (-report detail)' => sub {
 
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
@@ -609,7 +609,7 @@ subtest 'station-level data (-report id)' => sub {
                 baseline    => '2016-2017',
                 fmonth      => 2,
                 fday        => '2-3',
-                report      => 'id',
+                report      => 'detail',
                 refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
