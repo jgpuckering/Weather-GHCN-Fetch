@@ -51,7 +51,7 @@ ghcn_fetch.pl - Fetch station and weather data from the NOAA GHCN repository
             [-fmonth <str>] [-fday <str>]
             [-anomalies] [-baseline <str>] [-precip] [-tavg] [-nogaps]
             [-kml <filespec> [-color <str>] ]
-            [-dataonly] [-nonetwork <int>] [-performance] [-verbose]
+            [-dataonly] [-refresh <str>] [-performance] [-verbose]
             [-outclip]
             [-report <report_type>]
 
@@ -344,28 +344,42 @@ Send output to the Windows clipboard.  (Windows only)
 Print only the data table.  Other information, including notes, lists
 of stations kept and rejected, and statistics are suppressed.
 
-=item -nonetwork <int>
+=item -refresh <str>
 
-Set the NoNetwork option used in URI::Fetch in order to alter the
-behaviour of caching.
+This option determines whether and when cached files are refreshed from
+the network source.  Default is yearly.  Possible values are:
 
-By default, -nonetwork is set to -1, which sets the NoNetwork option
-of URI::Fetch to the number of seconds in the current year at the
-time the script is run. This means that the HTTP server is not
-contacted if the page is in cache and the cached page was inserted
-sometime within the present year. If the cached copy is older than
-this year, then a normal HTTP request (full or cache check) is done.
+=over 4
 
-If -nonetwork is set to 0 and the requested page is found in the
-cache, the HTTP server is checked for a fresher copy.
+=item yearly
 
-If -nonetwork is set to 1, the HTTP server is never contacted,
-regardless of the page being in cache or not. If the page is missing
-from cache, the fetch method will return undef and the script with
-die. If the page is in cache, that page will be returned, no matter
-how old it is. This is useful for situations where the NOAA HTTP
-server is slow or offline and the desired data is available in the
-cache.
+The origin HTTP server is contacted and the page refreshed if the
+cached file has not been changed within the current year. The
+rationale for this, and for this being the default, is that the GHCN
+data for the current year will always be incomplete, and that will
+skew any statistical analysis and so should normally be truncated.
+If the user needs the data for the current year, they should use a
+refresh value of 'always' or a number.
+
+=item always
+
+If a page is in the cache, the origin HTTP server is always checked for
+a fresher copy
+
+=item never
+
+The origin HTTP is never contacted, regardless of the page being in
+cache or not. If the page is missing from cache, the fetch method will
+return undef. If the page is in cache, that page will be returned, no
+matter how old it is.
+
+=item <number>
+
+The origin HTTP server is not contacted if the page is in cache
+and the cached page was inserted within the last <number> days.
+Otherwise the server is checked for a fresher page.
+
+=back
 
 =item -performance
 

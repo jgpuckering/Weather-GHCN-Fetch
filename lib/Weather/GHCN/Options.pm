@@ -83,14 +83,10 @@ my $Tk_opt_table = [
         ]
     ],
     ['', '', '-'],
-    ['nonetwork',    '=i',   -1,
-        help => 'Set the NoNetwork option in URI::Fetch',
+    ['refresh',    '=s',   'yearly',
+        help => 'Refresh yearly, (default), never, always, or if N days old (N > 1)',
         label => 'Cache refresh option',
-        choices => [
-            ['Refresh if stale this year', -1 ],    ## no critic [ProhibitMagicNumbers]
-            ['Check for fresher copy',      0 ],
-            [q(Don't refresh cache),        1 ],
-        ],
+        choices => [ 'yearly', 'always', 'never', '<N days old>' ],
     ],
     ['performance', '!',    undef, label => 'Report performance statistics'],
     ['verbose',     '!',    undef, label => 'Print information messages'],
@@ -231,16 +227,16 @@ method get_getopt_list :common () {
     my @options_list;
     my @options;
 
-    # According to https://metacpan.org/pod/Tk::Getopt -opttable 
-    # should be a reference to an array containing all options. 
-    # Elements of this array may be strings, which indicate the 
-    # beginning of a new group, or array references describing the 
-    # options. The first element of this array is the name of the 
-    # option, the second is the type (=s for string, =i for integer, 
-    # ! for boolean, =f for float etc., see Getopt::Long) for a 
-    # detailed list. The third element is optional and contains the 
-    # default value (otherwise the default is undefined). 
-    # Further elements are optional too and describe more attributes. For a 
+    # According to https://metacpan.org/pod/Tk::Getopt -opttable
+    # should be a reference to an array containing all options.
+    # Elements of this array may be strings, which indicate the
+    # beginning of a new group, or array references describing the
+    # options. The first element of this array is the name of the
+    # option, the second is the type (=s for string, =i for integer,
+    # ! for boolean, =f for float etc., see Getopt::Long) for a
+    # detailed list. The third element is optional and contains the
+    # default value (otherwise the default is undefined).
+    # Further elements are optional too and describe more attributes. For a
     # complete list of these attributes refer to "OPTTABLE ARGUMENTS".
 
     foreach my $row ( $Tk_opt_table->@* ) {
@@ -250,9 +246,9 @@ method get_getopt_list :common () {
         my ($opt_kw, $opt_type, $default, @others) = $row->@*;
         # skip the group dividers
         next if not $opt_kw;
-        
+
         # now figure out whether the slurped values are a hash of
-        # other options (including label) or just a pair of scalars 
+        # other options (including label) or just a pair of scalars
         # ('label' and label value with no other options).
         my %h;
         if (@others > 1 && ref $others[0] eq 'HASH') {
@@ -296,7 +292,7 @@ method get_getopt_list :common () {
 
 Returns:  \%choices
 
-Find all the options which have a multiple choice response, and return 
+Find all the options which have a multiple choice response, and return
 a hash keyed on the option name and with a values consisting
 of a hash of the valid responses as value/label pairs.
 
@@ -312,7 +308,7 @@ method get_option_choices :common () {
         my ($opt_kw, $opt_type, $default, @others) = $row->@*;
         # skip the group dividers
         next if not $opt_kw;
-        
+
         my $href;
         if (@others and ref $others[0] eq 'HASH' ) {
             $href = $others[0];
@@ -324,10 +320,15 @@ method get_option_choices :common () {
 
         my %hv;
         if ( $href->{'choices'} and ref $href->{'choices'} eq 'ARRAY' ) {
-            foreach my $aref ( $href->{'choices'}->@* ) {
-                $hv{ $aref->[1] } = $aref->[0];
+            foreach my $slot ( $href->{'choices'}->@* ) {
+                if (ref $slot eq 'ARRAY') {
+                    $hv{ $slot->[1] } = $slot->[0];
+                }
+                elsif (ref $slot eq $EMPTY) {
+                    $hv{ $slot } = undef;
+                }
             }
-            $choices{$opt_kw} = \%hv;            
+            $choices{$opt_kw} = \%hv;
         }
     }
 
@@ -610,21 +611,22 @@ method validate () {
     # Maintenance Note
     #-----------------------------------------------------------------
     #
-    # ghcn_fetch.pl uses Tk::Getopt rather than Getopt::Long and as
-    # a result it does it's own validation checking of -report before
-    # the validate() method of this module gets called.  Unfortunately,
-    # the error message is useless because it fails to print out the
-    # choices correctly.  So, special code was written in ghcn_fetch
-    # to allow the -report option to be abbreviated, and to validate
-    # it, and to issue a proper error message when it's invalid.
+    # GHCN::Fetch uses Tk::Getopt rather than Getopt::Long and as
+    # a result it does it's own validation checking of -report and
+    # -refresh before the validate() method of this module gets called.
+    # Unfortunately, the error message is useless because it fails to
+    # print out the choices correctly.  So, special code was written
+    # in GHCN::Fetch to allow the -report and -refresh options to be
+    # abbreviated, and to validate them, and to issue proper error
+    # messages when they are invalid.
     #
     # Consequently, by the time this code is reached, any abbreviation
-    # to $opt_obj->report has already be replaced, and validation
-    # and error reporting done.
+    # to $opt_obj->report (or $opt_obj->refresh) has already been replaced,
+    # and validation and error reporting has been done done.
 
     my %report_abbrev = abbrev( qw(id daily monthly yearly) );
 
-    my $report = $opt_obj->report;
+    my $report = lc $opt_obj->report;
 
     # uncoverable branch true
     croak "*E* undef report type"
@@ -634,6 +636,20 @@ method validate () {
         if $report and not $report_abbrev{ $report };
 
     $opt_obj->report = $report_abbrev{ $report };
+
+
+    my %refresh_abbrev = abbrev( qw(yearly never always) );
+
+    my $refresh = lc $opt_obj->refresh;
+
+    # uncoverable branch true
+    croak "*E* undef refresh option"
+        if not defined $refresh;
+
+    push @errors, '*E* invalid refresh option: ' . $refresh
+        if $refresh and not $refresh_abbrev{ $refresh };
+
+    $opt_obj->refresh = $refresh_abbrev{ $refresh };
 
     #-----------------------------------------------------------------
     # end of noted section

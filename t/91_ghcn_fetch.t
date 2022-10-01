@@ -21,7 +21,7 @@ my @args = (
         '-location',    'New York',
         '-active',      '1900-1910',
         '-report',      '',
-        '-nonetwork',   1,
+        '-refresh',     'never',
         '-config',      $config_file,
 );
 

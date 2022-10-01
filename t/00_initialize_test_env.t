@@ -18,11 +18,17 @@ my $errors_aref;
 
 my $is_Win32_x64 = $Config{archname} =~ m{ \A MSWin32-x64 }xms;
 
-# Clean out the cache if this script is run with command line argument 
-# 'clean' or if we are not running on Windows x64, since the cache files
-# are created on Win32_x64 and aren't portable to other platforms.
 # TODO: provide a portable caching solution
-if ( !$is_Win32_x64 or $opt =~ m{ [-]?clean }xmsi ) {
+
+# Clean out the cache if this script is run with command line argument 
+# 'clean'.  To invoke this option when running 'prove', use the
+# arisdottle; i.e. prove :: clean
+#
+# Until these cache files can be made platform portable, we'll also
+# clean the cache when we are not on Windows x64.
+#
+if ( $opt =~ m{ [-]?clean }xmsi ) {
+#if ( !$is_Win32_x64 or $opt =~ m{ [-]?clean }xmsi ) {
     if (-e $cachedir) {
         remove_tree( $cachedir, 
             {   safe => 1, 

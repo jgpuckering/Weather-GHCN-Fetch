@@ -79,7 +79,7 @@ subtest 'get methods' => sub {
     $href = Weather::GHCN::Options->get_option_choices(); 
     ok ref $href eq 'HASH', 'get_option_choices returned a hash';
     ok $href->{'report'}, 'get_option_choices hash has a report key';
-    ok $href->{'nonetwork'}, 'get_option_choices hash has a nonetwork key';
+    ok $href->{'refresh'}, 'get_option_choices hash has a refresh key';
 
     $href = Weather::GHCN::Options->get_option_defaults();
     ok ref $href eq 'HASH', 'get_option_defaults returned a hash';
@@ -204,8 +204,8 @@ subtest 'options_as_string' => sub {
     $count = grep { $_ =~ m{ -location \s Ottawa }xms } @opt_list;
     is $count, 1, , '-location found';
 
-    $count = grep { $_ =~ m{ -nonetwork \s [-]?\d }xms } @opt_list;
-    is $count, 1, , '-nonetwork found';
+    $count = grep { $_ =~ m{ -refresh \s (\w+|\d+) }xms } @opt_list;
+    is $count, 1, , '-refresh found';
 
     $count = grep { $_ =~ m{ -quality \s \d+ }xms } @opt_list;
     is $count, 1, , '-quality found';

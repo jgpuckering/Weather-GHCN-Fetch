@@ -114,7 +114,7 @@ subtest '_get_config_options' => sub {
     my @got_keys;
     my @expected_keys;
     
-    if ( _get_default_config_filespec() ) {
+    if ( _get_config_filespec('') ) {
         $href = _get_config_options("");
         is ref $href, 'HASH', '_get_config_options("") loaded a default config';
     } else {

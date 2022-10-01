@@ -235,7 +235,7 @@ sub run ($progname, $argv_aref) {
 
     $user_opt_href->{report} = $report_type
         if $report_type;
-       
+
     my $config_file = $user_opt_href->{config} // $CONFIG_FILE;
 
     die '*E* unrecognized options: ' . join $SPACE, @ARGV
@@ -303,7 +303,7 @@ sub run ($progname, $argv_aref) {
         if ($Opt->report eq 'id' and $Opt->nogaps) {
             say $ghcn->get_missing_rows;
         }
-        
+
         # these only do something when $Opt->report ne 'id'
         $ghcn->summarize_data;
         say $ghcn->get_summary_data;
@@ -387,7 +387,7 @@ via B<Tk::GetOptions> -- if it is installed -- or via B<Getopt::Long>.
 
 sub get_user_options ( $optfile=undef ) {
 
-    my $user_opt_href = $USE_TK 
+    my $user_opt_href = $USE_TK
                       ? get_user_options_tk($optfile)
                       : get_user_options_no_tk($optfile)
                       ;
@@ -423,13 +423,13 @@ This function returns a reference to a hash of user options obtained
 by calling B<Tk::Getopt>.  This may launch a GUI dialog to collect
 the options.
 
-The optional $optfile argument specifies a filename which 
-B<Tk::GetOptions> can use to store or load options.  
+The optional $optfile argument specifies a filename which
+B<Tk::GetOptions> can use to store or load options.
 
 =cut
 
 sub get_user_options_tk ( $optfile=undef ) {
-    
+
     if (not $USE_TK) {
         warn "*E* Tk or Tk::Getopt not installed";
         return;
@@ -497,8 +497,8 @@ sub get_user_options_tk ( $optfile=undef ) {
 
 =head2 valid_report_type ($rt, \@opttable)
 
-This function is used to valid the report type.  Valid values are 
-defined in the built-in Tk options table, which can be obtained by 
+This function is used to validate the report type.  Valid values are
+defined in the built-in Tk options table, which can be obtained by
 calling:
 
     my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
@@ -507,7 +507,7 @@ calling:
 
 sub valid_report_type ($rt, $opttable_aref) {
     my $choices_href = Weather::GHCN::Options->get_option_choices;
-    return $choices_href->{'report'}->{$rt};
+    return $choices_href->{'report'}->{ lc $rt };
 }
 
 =head2 deabbrev_report_type ($rt)
@@ -523,7 +523,41 @@ an unabbreviated report type.
 
 sub deabbrev_report_type ($rt) {
         my %r_abbrev = abbrev( qw(id daily monthly yearly) );
-        my $deabbreved = $r_abbrev{ $rt };
+        my $deabbreved = $r_abbrev{ lc $rt };
+        return $deabbreved;
+}
+
+=head2 valid_refresh_option ($refresh, \@opttable)
+
+This function is used to validate the refresh option.  Valid values are
+defined in the built-in Tk options table, which can be obtained by
+calling:
+
+    my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
+
+=cut
+
+sub valid_refresh_option ($refresh, $opttable_aref) {
+    my $choices_href = Weather::GHCN::Options->get_option_choices;
+    return $TRUE if $refresh =~ m{ \A \d+ \Z }xms;
+    return $choices_href->{'refresh'}->{ lc $refresh };
+}
+
+=head2 deabbrev_refresh_option ($refresh)
+
+The refresh option values can be abbrevated, so long as the abbrevation
+is unambiquous.  For example, 'yearly' can
+be abbreviated to 'y', 'ye', 'yea', etc.
+
+This function takes a (possibly abbreviated) refresh option and returns
+an unabbreviated refresh option.
+
+=cut
+
+sub deabbrev_refresh_option ($refresh) {
+        return $refresh if $refresh =~ m{ \A \d+ \Z }xms;
+        my %r_abbrev = abbrev( qw(yearly never always) );
+        my $deabbreved = $r_abbrev{ lc $refresh };
         return $deabbreved;
 }
 

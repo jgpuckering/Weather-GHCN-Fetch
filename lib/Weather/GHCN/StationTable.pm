@@ -68,24 +68,24 @@ our $VERSION = 'v0.0.000';
 # directly used by this module
 use Carp                qw( carp croak );
 use Const::Fast;
-use Weather::GHCN::Common        qw( :all );
-use Weather::GHCN::TimingStats;
 use HTML::Entities;
-#use Hash::Wrap          {-lvalue => 1, -defined => 1, -as => '_wrap_hash' };
-
-# included so consumers of this module don't have to include these
-use Cache::FileCache;
 use Devel::Size;
 use File::HomeDir;
 use File::Spec;
 use FindBin;
+use GIS::Distance;
+use Try::Tiny;
+use URI::Fetch;
+use Weather::GHCN::Common        qw( :all );
+use Weather::GHCN::TimingStats;
+#use Hash::Wrap          {-lvalue => 1, -defined => 1, -as => '_wrap_hash' };
+
+# included so consumers of this module don't have to include these
+use Weather::GHCN::CacheURI;
 use Weather::GHCN::CountryCodes;
 use Weather::GHCN::Measures;
 use Weather::GHCN::Options;
 use Weather::GHCN::Station;
-use GIS::Distance;
-use Try::Tiny;
-use URI::Fetch;
 
 const my $EMPTY  => q();    # empty string
 const my $SPACE  => q( );   # space character
@@ -1102,12 +1102,7 @@ method load_stations () {
         my $root = $cache_opt->{'root'};
         my $root_abs = File::Spec->rel2abs( $root, $FindBin::Bin );
 
-        $_cache = Cache::FileCache->new(
-            {
-              cache_root => $root_abs,
-              namespace  => $namespace,
-            }
-        );
+        $_cache = Weather::GHCN::CacheURI->new($root_abs);
     }
 
     my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $_cache, 'URI::Fetch_stn');
@@ -1639,57 +1634,16 @@ method _fetch_url ($url, $cache, $timer_label=$EMPTY) {
 
     $_tstats->start($timer_label) if $timer_label;
 
-    # $cache is a Cache::FileCache object.  URI::Fetch will use this
-    # object to designate the location of its page cache.
+    my ($from_cache, $content) = $cache->fetch($url, $Opt->refresh);
 
-    # NoNetwork == 0:
-    #   If a page is in the cache, the origin HTTP server is always checked for
-    #   a fresher copy
-
-    # NoNetwork == 1:
-    #   The origin HTTP is never contacted, regardless of the page being in
-    #   cache or not. If the page is missing from cache, the fetch method will
-    #   return undef. If the page is in cache, that page will be returned, no
-    #   matter how old it is.
-
-    # NoNetwork > 1:
-    #   The origin HTTP server is not contacted if the page is in cache and the
-    #   cached page was inserted in the last N seconds.
-    #   If the cached copy is older than N seconds, a normal HTTP request (full
-    #   or cache check) is done.
-
-    # NoNetwork is set to the value of -nonetwork (when it was provided)
-    #   If the -nonetwork option is not given, then NoNetwork is set to the number
-    #   of seconds in the current year.
-
-    my $nonetwork = $Opt->nonetwork;
-
-    croak '*E* set_options must include cache options if the nonetwork option is > 0'
-        if $nonetwork > 0 and not $cache;
-
-    if ( !$Opt->defined('nonetwork') || $Opt->nonetwork < 0 ) {
-        ## no critic [ProhibitMagicNumbers]
-        my @t = localtime;
-        # set nonetwork to the number of seconds this year
-        # $t[7] is the day of the year (0..364/365)
-        $nonetwork = $t[7] * 24 * 60*60;
-    }
-
-
-    my %fetch_opt = ( NoNetwork => $nonetwork );
-
-    $fetch_opt{Cache} = $cache if $cache;
-
-    my $res = URI::Fetch->fetch( $url, %fetch_opt )
-                or croak '*E* unable to fetch data from ' . $url . ': ' .
-                         ( URI::Fetch->errstr // 'unknown error' ). "\n";
+    croak '*E* unable to fetch data from ' . $url
+        unless $content;
 
     $_tstats->stop($timer_label) if $timer_label;
 
-    my $content = $res->is_success ? $res->content : $EMPTY;
-
     return $content;
 }
+
 
 method _filter_stations ($stations_href) {
     $_tstats->start('Filter_stn');
@@ -2109,12 +2063,12 @@ sub _get_config_options ($config_file=$EMPTY) {
     #debug#     outputs => [
     #debug#         [ 'File',   min_level => 'debug', filename => 'c:/sandbox/log.log' ],
     #debug#         [ 'Screen', min_level => 'debug' ],
-    #debug#         
+    #debug#
     #debug#     ]
     #debug# );
 
     my $config_href = {};
-    
+
     # passing undef will result in an empty config
     return $config_href if not defined $config_file;
 
@@ -2124,10 +2078,7 @@ sub _get_config_options ($config_file=$EMPTY) {
     #debug# $log->debug( 'caller ' . join(' | ', caller)                   );
     #debug# $log->debug( 'received config_file:           ' . $config_file );
 
-    my $config_filespec = $config_file eq $EMPTY
-                        ? _get_default_config_filespec()
-                        : $config_file
-                        ;
+    my $config_filespec = _get_config_filespec($config_file);
 
     my $yaml_struct;
     my $msg = $EMPTY;
@@ -2163,14 +2114,14 @@ sub _get_config_options ($config_file=$EMPTY) {
     return $config_href;
 }
 
-sub _get_default_config_filespec () {
+sub _get_config_filespec ($config_file) {
 
     # an EMPTY arg will default to $HOME/.ghcn_fetch.yaml
-    my $config_file ||= $CONFIG_FILE;
+    $config_file ||= $CONFIG_FILE;
 
     my $homedir = File::HomeDir->my_home;
     #debug# say {$fh} 'homedir:                        ', $homedir;
-    
+
     my $config_filespec = File::Spec->canonpath($config_file);
     #debug# say {$fh} 'config_filespec (canon):        ', $config_filespec;
 
@@ -2178,10 +2129,10 @@ sub _get_default_config_filespec () {
     #debug# say {$fh} 'config_filespec (s/$HOME/):     ', $config_filespec;
 
     if ( not File::Spec->file_name_is_absolute($config_filespec) ) {
-        $config_filespec = File::Spec->catfile( $homedir, $config_filespec );       
+        $config_filespec = File::Spec->catfile( $homedir, $config_filespec );
         #debug# say {$fh} 'config_filespec wasnt absolute: ', $config_filespec;
     }
-    
+
     return $config_filespec;
 }
 
