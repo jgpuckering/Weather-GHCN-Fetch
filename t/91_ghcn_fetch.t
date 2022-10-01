@@ -5,7 +5,7 @@ use v5.18;      # minimum needed for Object::Pad
 use FindBin;
 use lib $FindBin::Bin . '/../lib';
 
-use Test::More tests => 7;
+use Test::More tests => 10;
 use Capture::Tiny       qw( capture );
 use Module::Load::Conditional qw(check_install);
 
@@ -46,6 +46,7 @@ is $matches, 11, 'Weather::GHCN::App::Fetch returned 9 entries for NEW YORK';
 # for test coverage
 
 is Weather::GHCN::App::Fetch::deabbrev_report_type('da'), 'daily', 'deabbrev_report_type';
+is Weather::GHCN::App::Fetch::deabbrev_refresh_option('y'), 'yearly', 'deabbrev_refresh_option';
 
 local @ARGV = qw(-report id);
 
@@ -66,3 +67,6 @@ my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 ok Weather::GHCN::App::Fetch::valid_report_type('id', \@opttable),   'valid_report_type - id valid';
 ok !Weather::GHCN::App::Fetch::valid_report_type('xxx', \@opttable), 'valid_report_type - xxx invalid';
+
+ok Weather::GHCN::App::Fetch::valid_refresh_option('never', \@opttable),   'valid_refresh_option - never valid';
+ok !Weather::GHCN::App::Fetch::valid_refresh_option('xxx', \@opttable), 'valid_refresh_option - xxx invalid';
