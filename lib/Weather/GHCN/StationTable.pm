@@ -76,7 +76,6 @@ use FindBin;
 use Math::Trig;
 use Time::Piece;
 use Try::Tiny;
-use URI::Fetch;
 use Weather::GHCN::Common        qw( :all );
 use Weather::GHCN::TimingStats;
 #use Hash::Wrap          {-lvalue => 1, -defined => 1, -as => '_wrap_hash' };

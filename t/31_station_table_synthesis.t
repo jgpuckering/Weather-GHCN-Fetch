@@ -24,14 +24,15 @@
 # summarize_data and then get_summary_data (and the report option must
 # be one of daily, weekly or monthly).
 #
-# Because this script loads station metadata and data, it relies on
-# data cached in t\ghcn_cache to (a) improve performance by avoiding
-# the overhead of an URI::Fetch call across the network, and (b) so
-# that the data is stable for testing purposes.  The -refresh option
-# is set to constant $REFRESH, which is set to 'never', to force the
-# cache routines to only fetch from the cache.  If any pages are missing,
-# the fetch will return undef and test cases will fail.  For this reason, it's
-# best not to fiddle with the $config_options cache options.
+# Because this script loads station metadata and data, it relies on data
+# cached in t\ghcn_cache to (a) improve performance by avoiding the 
+# overhead of an GHCN::CacheURI->fetch call across the network; and (b) 
+# so that the data is stable and portable for testing purposes.  The -
+# refresh option is set to constant $REFRESH, which is set to 'never', 
+# to force the cache routines to only fetch from the cache.  If any 
+# pages are missing, the fetch will return undef and test cases will 
+# fail.  For this reason, it's best not to fiddle with the 
+# $config_options cache options.
 #
 # You can change options by calling set_options again, and you can even
 # skip calling load_stations if the changes you made to options are
@@ -53,34 +54,41 @@ use lib $FindBin::Bin . '/../lib';
 use Weather::GHCN::StationTable;
 package Weather::GHCN::StationTable;
 
-use Test::More tests => 16;
+
+use Test::More tests => 17;
 use Test::Exception;
 
 use Const::Fast;
-use File::Temp;
-use File::Spec;
+use Path::Tiny;
+
+my $Bin = $FindBin::Bin;
 
 const my $TRUE   => 1;          # perl's usual TRUE
 const my $FALSE  => not $TRUE;  # a dual-var consisting of '' and 0
 const my $EMPTY  => '';
 const my $NL     => qq(\n);
 
-const my $CONFIG_FILE => $FindBin::Bin . '/ghcn_fetch.yaml';
+const my $CONFIG_FILE => path($Bin)->child('ghcn_fetch.yaml');
 
-my $cachedir = $FindBin::Bin . '/ghcn_cache';
+my $cachedir = path($Bin,'ghcn_cache');
+my @cachefiles = path($cachedir)->children;
+
+if (not -d $cachedir) {
+    BAIL_OUT "*E* cached folder is missing";
+}
 
 my $Refresh;       # control caching
 
-if (not -d $cachedir) {
-    # no cache folder, so allow server access so the cache will be created
-    # note that it may take some time to fetch the pages
-    # expect the cache to be about 45 Mb
-    $Refresh = 'always';
-    warn "creating or refreshing cache: $cachedir\n";
-} else {
+if (@cachefiles > 0) {
     # do not contact the server
     $Refresh = 'never';
-    warn "using cache: $cachedir\n";
+    ok $TRUE, "using cached files: $cachedir\n";
+} else {
+    # The cache is empty, enable refreshing the cache.
+    # Note that it may take some time to fetch the pages.
+    # Expect the cache to be about 45 Mb
+    $Refresh = 'always';
+    ok $TRUE, "creating cache: $cachedir\n";
 }
 
 my $ghcn;
@@ -89,22 +97,22 @@ my $Opt;
 
 # get config options from the test options file instead of from
 # the default, which is $HOME/.ghcn_fetch.yaml
-my $cache_for_testing = { cache => { root => $cachedir, } };
+my $cache_for_testing = { 
+    cache => { 
+        root => $cachedir, 
+    } 
+};
 
-# skip to START_TESTING if there's a non-zero command line arg
-# uncoverable branch true
-# uncoverable condition left
-# uncoverable condition true
-our $DEBUG = shift @ARGV // 0;
-# uncoverable branch true
-goto START_TESTING if $DEBUG;
+# skip to START_TESTING if the word 'debug' is a command line argument
+goto START_TESTING 
+    if grep { 'debug' eq lc $_ } @ARGV;;
 
 subtest 'set_options with config_options' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
-                location    => 'yow',
+                location  => 'yow',
                 refresh   => $Refresh,
             },
             config_options => {
@@ -143,7 +151,7 @@ subtest "station list (-loc ZZZZZ)" => sub {
 
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
-                location    => 'ZZZZZ',
+                location  => 'ZZZZZ',
                 refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
@@ -167,7 +175,7 @@ subtest 'station list (-report "")' => sub {
                 location    => 'New York',
                 active      => '1900-1910',
                 report      => '',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -204,7 +212,7 @@ subtest 'station-level data (-report detail)' => sub {
                 range       => '1900-1900',
                 active      => '',
                 report      => 'detail',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -251,7 +259,7 @@ subtest 'daily data (-report daily)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'daily',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -276,7 +284,7 @@ subtest 'monthly data (-report monthly)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'monthly',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -304,7 +312,7 @@ subtest 'yearly data (-report yearly)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'yearly',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -384,7 +392,7 @@ subtest 'missing_data' => sub {
                 location    => 'CA006105976,CA006105978', # OTTAWA CDA & CDA RCS
                 range       => '2017-2018',
                 report      => 'yearly',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -424,7 +432,7 @@ subtest 'missing_data' => sub {
                 range       => '2014-2014',
                 report      => 'yearly',
                 quality     => 0,
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -448,7 +456,7 @@ subtest 'reload with new options' => sub {
                 range       => '1900-1900',
                 active      => '',
                 report      => 'detail',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             };
 
     my ($opt, @errors) = $ghcn->set_options(
@@ -518,7 +526,7 @@ subtest 'reload with new options' => sub {
                 active      => '',
                 report      => 'yearly',
                 precip      => 1,
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             };
 
     ($opt, @errors) = $ghcn->set_options(
@@ -537,14 +545,7 @@ subtest "station list (-kml '<tempfile>')" => sub {
 
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
-    my $tmpdir = File::Spec->tmpdir();
-    my $fh = File::Temp->new(
-        TEMPLATE => '__temp_XXXXX',
-        DIR => $tmpdir,
-        SUFFIX => '.kml',
-        UNLINK => 1,
-    );
-    my $kmlfile = $fh->filename;
+    my $kmlfile = Path::Tiny->tempfile('__temp_ghcn_kmlfile_XXXXX');
 
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
@@ -554,7 +555,7 @@ subtest "station list (-kml '<tempfile>')" => sub {
                 active      => '1900-1910',
                 report      => '',
                 kml         => $kmlfile,
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -582,7 +583,7 @@ subtest 'station list (-gps "40.7789 -73.9692" -radius 12)' => sub {
                 gps         => '40.7789 -73.9692',
                 radius      => 12,
                 active      => '1900-1910',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -610,7 +611,7 @@ subtest 'station-level data (-report detail)' => sub {
                 fmonth      => 2,
                 fday        => '2-3',
                 report      => 'detail',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -679,7 +680,7 @@ subtest "station list (-partial)" => sub {
                 active      => '1870-1880',
                 partial     => 1,
                 report      => '',
-                refresh   => $Refresh,
+                refresh     => $Refresh,
             },
             config_options => $cache_for_testing,
         );

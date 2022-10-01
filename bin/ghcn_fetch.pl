@@ -435,7 +435,6 @@ additional options. The file content should contain something like this:
     ---
     cache:
         root: C:/ghcn_cache
-        namespace: ghcn
 
     aliases:
         yow: CA006106000,CA006106001    # Ottawa airport
@@ -448,9 +447,9 @@ Supported options are:
 
 =item cache:
 
-This section defines the cache_root and namespace options for URI::Fetch.
+This section defines the cache_root options for GHCN::CacheURI.
 If present, then any pages which are fetched from the NOAA GHCN repository
-are cached in the folder and subfolder designated by root: and namespace:.
+are cached in the folder designated by root.
 This vastly improves the performance of subsequent invocations of
 ghcn_fetch, especially when using the same station filtering criteria.
 
