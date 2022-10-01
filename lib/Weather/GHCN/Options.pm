@@ -42,6 +42,8 @@ use YAML::Tiny;
 # Constants
 ######################################################################
 
+const my $TRUE   => 1;      # perl's usual TRUE
+const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 const my $SPACE => q( );
 const my $EMPTY => q();
 const my $DASH  => q(-);
@@ -325,7 +327,7 @@ method get_option_choices :common () {
                     $hv{ $slot->[1] } = $slot->[0];
                 }
                 elsif (ref $slot eq $EMPTY) {
-                    $hv{ $slot } = undef;
+                    $hv{ $slot } = $TRUE;
                 }
             }
             $choices{$opt_kw} = \%hv;
