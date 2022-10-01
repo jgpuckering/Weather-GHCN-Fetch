@@ -2568,21 +2568,22 @@ B<-report detail> becomes B<report => 'detail'>.
 =head1 VERSIONING and COMPATIBILITY
 
 The version number scheme used for this module consists of a 3-part
-dot-delimited string such as v0.22.365.  This format was chosen for
+dot-delimited string such as v0.0.003.  This format was chosen for
 compatibility with Dist::Zilla version support, so that all modules
 in GHCN will get the same version number upon release.  See also
 L<https://metacpan.org/pod/version>.
 
-The first digit of the string is a major release numbers.  With the
-exception of v0 release, which should be considered experimental
-pre-production versions, the interface is intended to be upward
-compatible within a set of releases sharing the same major release
-number.  If an incompatible change becomes necessary, the major
-release number will be incremented.
+The first digit of the string is a major release numbers, and the 
+second is the minor release number.  With the exception of v0.0 
+releases, which should be considered experimental pre-production 
+versions, the interface is intended to be upward compatible within a 
+set of releases sharing the same major release number.  If an 
+incompatible change becomes necessary, the major release number will 
+be incremented.
 
-The other two strings are essentially the date of the release, in
-the format YY.DDD where YY is the year of the century and DDD is the
-day number within the year.
+An increment to the minor release number indicates significant new
+functionality, which usually mean new API's and options.  But, it should
+be upward compatible with the prior release.
 
 =head1 AUTHOR
 
