@@ -727,10 +727,6 @@ method get_options ( %args ) {
     if ( not $args{no_header} ) {
         push @output, $EMPTY;
         push @output, $TAB . 'Note that quality is a percentage; radius in km';
-        push @output, $TAB . 'Note that nonetwork values mean the following:';
-        push @output, $TAB . ' -1 refresh the cache if last page not refreshed this year';
-        push @output, $TAB . '  0 always check for a fresher copy of the page';
-        push @output, $TAB . '  1 do not contact the server, just use what is cached';
     }
 
     return $return_list ? @output : tsv(\@output);
