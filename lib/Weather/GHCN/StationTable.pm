@@ -1968,7 +1968,8 @@ method _report_gaps ($stn, $gaps_href) {
         }
     }
 
-    my ($this_yyyy, $this_mm) = (localtime->year, localtime->mon);
+    my $now = localtime;
+    my ($this_yyyy, $this_mm) = ($now->year, $now->mon);
 
     foreach my $yyyy ( @years ) {
         # don't report gaps for years that aren't within -range (or -baseline if -anomalies)
