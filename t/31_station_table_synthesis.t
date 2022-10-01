@@ -27,10 +27,10 @@
 # Because this script loads station metadata and data, it relies on
 # data cached in t\ghcn_cache to (a) improve performance by avoiding
 # the overhead of an URI::Fetch call across the network, and (b) so
-# that the data is stable for testing purposes.  The -nonetwork option
-# is set to constant $NONETWORK, which is set to 1, to force URI::Fetch
-# to only fetch from the cache.  If any pages are missing, URI::Fetch
-# will return undef and test cases will fail.  For this reason, it's
+# that the data is stable for testing purposes.  The -refresh option
+# is set to constant $REFRESH, which is set to 'never', to force the
+# cache routines to only fetch from the cache.  If any pages are missing,
+# the fetch will return undef and test cases will fail.  For this reason, it's
 # best not to fiddle with the $config_options cache options.
 #
 # You can change options by calling set_options again, and you can even
@@ -69,17 +69,17 @@ const my $CONFIG_FILE => $FindBin::Bin . '/ghcn_fetch.yaml';
 
 my $cachedir = $FindBin::Bin . '/ghcn_cache/ghcn';
 
-my $Nonetwork;       # control caching
+my $Refresh;       # control caching
 
 if (not -d $cachedir) {
     # no cache folder, so allow server access so the cache will be created
     # note that it may take some time to fetch the pages
     # expect the cache to be about 45 Mb
-    $Nonetwork = 0;
+    $Refresh = 'always';
     warn "creating or refreshing cache: $cachedir\n";
 } else {
     # do not contact the server
-    $Nonetwork = 1;
+    $Refresh = 'never';
     warn "using cache: $cachedir\n";
 }
 
@@ -110,7 +110,7 @@ subtest 'set_options with config_options' => sub {
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
                 location    => 'yow',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => {
                 aliases => {
@@ -131,7 +131,7 @@ subtest 'set_options with config_file' => sub {
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
                 location    => 'yow',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_file => $CONFIG_FILE,
         );
@@ -149,7 +149,7 @@ subtest "station list (-loc ZZZZZ)" => sub {
     my ($opt, @errors) = $ghcn->set_options(
             user_options => {
                 location    => 'ZZZZZ',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -172,7 +172,7 @@ subtest 'station list (-report "")' => sub {
                 location    => 'New York',
                 active      => '1900-1910',
                 report      => '',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -209,7 +209,7 @@ subtest 'station-level data (-report id)' => sub {
                 range       => '1900-1900',
                 active      => '',
                 report      => 'id',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -256,7 +256,7 @@ subtest 'daily data (-report daily)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'daily',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -281,7 +281,7 @@ subtest 'monthly data (-report monthly)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'monthly',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -309,7 +309,7 @@ subtest 'yearly data (-report yearly)' => sub {
                 location    => 'CA006105976', # OTTAWA CDA
                 range       => '1900-1900',
                 report      => 'yearly',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -389,7 +389,7 @@ subtest 'missing_data' => sub {
                 location    => 'CA006105976,CA006105978', # OTTAWA CDA & CDA RCS
                 range       => '2017-2018',
                 report      => 'yearly',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -429,7 +429,7 @@ subtest 'missing_data' => sub {
                 range       => '2014-2014',
                 report      => 'yearly',
                 quality     => 0,
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -453,7 +453,7 @@ subtest 'reload with new options' => sub {
                 range       => '1900-1900',
                 active      => '',
                 report      => 'id',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             };
 
     my ($opt, @errors) = $ghcn->set_options(
@@ -523,7 +523,7 @@ subtest 'reload with new options' => sub {
                 active      => '',
                 report      => 'yearly',
                 precip      => 1,
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             };
 
     ($opt, @errors) = $ghcn->set_options(
@@ -559,7 +559,7 @@ subtest "station list (-kml '<tempfile>')" => sub {
                 active      => '1900-1910',
                 report      => '',
                 kml         => $kmlfile,
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -587,7 +587,7 @@ subtest 'station list (-gps "40.7789 -73.9692" -radius 12)' => sub {
                 gps         => '40.7789 -73.9692',
                 radius      => 12,
                 active      => '1900-1910',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -615,7 +615,7 @@ subtest 'station-level data (-report id)' => sub {
                 fmonth      => 2,
                 fday        => '2-3',
                 report      => 'id',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
@@ -684,7 +684,7 @@ subtest "station list (-partial)" => sub {
                 active      => '1870-1880',
                 partial     => 1,
                 report      => '',
-                nonetwork   => $Nonetwork,
+                refresh   => $Refresh,
             },
             config_options => $cache_for_testing,
         );
