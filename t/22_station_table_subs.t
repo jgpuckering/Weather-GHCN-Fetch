@@ -11,7 +11,7 @@ use Weather::GHCN::StationTable;
 
 package Weather::GHCN::StationTable;
 
-use Test::More tests => 10;
+use Test::More tests => 9;
 use Test::Exception;
 
 use Const::Fast;
@@ -236,17 +236,3 @@ subtest '_qflags_as_string' => sub {
     is $s, $EMPTY, '_qflags_as_string with empty hash';
 };
 
-subtest 'time functions' => sub {
-
-    like _now(),
-         qr{ \A \d{4}-\d{2}-\d{2} \s \d{2}:\d{2}:\d{2} \Z }xms,
-         '_now() as scalar';
-    my @now = _now();
-    is @now, 6, '_now() as list (count)';
-
-    like _today(), 
-        qr{ \A \d{4}-\d{2}-\d{2} \Z }xms, 
-        '_today() as scalar';
-    my @today = _today();
-    is @today, 3, '_today as list (count)';
-};

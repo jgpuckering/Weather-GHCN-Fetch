@@ -74,6 +74,7 @@ use File::HomeDir;
 use File::Spec;
 use FindBin;
 use GIS::Distance;
+use Time::Piece;
 use Try::Tiny;
 use URI::Fetch;
 use Weather::GHCN::Common        qw( :all );
@@ -1967,7 +1968,7 @@ method _report_gaps ($stn, $gaps_href) {
         }
     }
 
-    my ($this_yyyy, $this_mm) = _today();
+    my ($this_yyyy, $this_mm) = (localtime->year, localtime->mon);
 
     foreach my $yyyy ( @years ) {
         # don't report gaps for years that aren't within -range (or -baseline if -anomalies)
@@ -2314,43 +2315,19 @@ sub _ddivide ($x, $y) {
 #----------------------------------------------------------------------
 
 sub _days_in_month ($year, $month) {
-
-    # coerce to numbers
-    $year += 0;
-    $month += 0;
-
-    ## no critic [ProhibitMagicNumbers]
-    my @mdays = (0, 31,28,31,30,31,30,31,31,30,31,30,31);
-
-    if ($month == 2) {
-        return $mdays[$month] + _is_leap_year($year);
-    }
-
-    return $mdays[$month];
+    return _timepiece($year, $month)->month_last_day;
 }
 
-sub _days_in_year ($year) {
-
-    $year += 0; # coerce to number
-
+sub _days_in_year ($year) {   
     ## no critic [ProhibitMagicNumbers]
     return 365 + _is_leap_year($year);
 }
 
-sub _is_leap_year ($year) {
-
-    $year += 0; # coerce to number
-
-    ## no critic [ProhibitMagicNumbers]
-    return 0 if $year % 4;
-    return 1 if $year % 100;
-    return 0 if $year % 400;
-    return 1;
+sub _is_leap_year ($year) {  
+    return _timepiece($year)->is_leap_year;
 }
 
 sub _month_names (@mm) {
-
-    my @mnames = qw(xxx Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 
     my @result = ();
     return (@result) unless @mm;
@@ -2361,7 +2338,8 @@ sub _month_names (@mm) {
             push @result, '???';
         }
         elsif ($mm > 0 and $mm < 13) {
-            push @result, $mnames[$mm];
+            # note: year is irrelevant, we just need something valid
+            push @result, _timepiece(2000,$mm)->monname;
         }
         else {
             push @result, '???';
@@ -2371,23 +2349,10 @@ sub _month_names (@mm) {
     return wantarray ? @result : shift @result;
 }
 
-sub _now () {
-
-    my @_now = localtime time;
-
-    return wantarray
-        ? iso_date_time(@_now)
-        : scalar iso_date_time(@_now)
-        ;
-}
-
-sub _today () {
-
-    my @ymdhms = _now();
-
-    return wantarray
-        ? @ymdhms[0..2]
-        : sprintf '%4d-%02d-%02d', @ymdhms[0..2];
+sub _timepiece ($year, $month=1, $day=1) {
+    # adding zero to coerce string to number
+    my $ymd = sprintf '%04d-%02d-%02d', $year+0, $month+0, $day+0;
+    return Time::Piece->strptime($ymd,'%F')
 }
 
 # Seasonal decades are based on seasonal years.
