@@ -68,8 +68,6 @@ method fetch ($uri, $refresh="yearly") {
     my $from_cache;
     my $content;
 
-$DB::single = 2;   # break and do 'n' (use 1 for 's')
-
     if ($refresh_lc eq 'always') {
         ($from_cache, $content) = $self->_fetch_refresh_always($uri);
     }
@@ -131,7 +129,6 @@ method _fetch_refresh_n_days ($uri, $cutoff_mtime) {
     # otherwise get the latest page from the server
     # check the server if the file is older than this year
 
-$DB::single = 2;   # break and do 'n' (use 1 for 's')
     my $key = $self->uri_to_key($uri);
     my $file = $self->path_to_key($key);
     
