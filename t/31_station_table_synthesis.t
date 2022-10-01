@@ -67,7 +67,7 @@ const my $NL     => qq(\n);
 
 const my $CONFIG_FILE => $FindBin::Bin . '/ghcn_fetch.yaml';
 
-my $cachedir = $FindBin::Bin . '/ghcn_cache/ghcn';
+my $cachedir = $FindBin::Bin . '/ghcn_cache';
 
 my $Refresh;       # control caching
 
@@ -89,12 +89,7 @@ my $Opt;
 
 # get config options from the test options file instead of from
 # the default, which is $HOME/.ghcn_fetch.yaml
-my $cache_for_testing = {
-    cache => {
-      root => $FindBin::Bin . '/ghcn_cache',
-      namespace => 'ghcn',
-    }
-};
+my $cache_for_testing = { cache => { root => $cachedir, } };
 
 # skip to START_TESTING if there's a non-zero command line arg
 # uncoverable branch true
