@@ -61,6 +61,7 @@ subtest 'undef-safe numeric functions' => sub {
 
 subtest 'date functions' => sub {
 
+    is _days_in_year(1889), 365, '_days_in_year 1889';
     is _days_in_year(1900), 365, '_days_in_year 1900';
     is _days_in_year(1901), 365, '_days_in_year 1901';
     is _days_in_year(1904), 366, '_days_in_year 1904';
@@ -68,6 +69,7 @@ subtest 'date functions' => sub {
     is _days_in_year(2004), 366, '_days_in_year 2004';
     is _days_in_year(2005), 365, '_days_in_year 2005';
 
+    is _days_in_month(1889, 10),31, '_days_in_month 1889-10';
     is _days_in_month(2019, 1), 31, '_days_in_month 2019-01';
     is _days_in_month(2019, 2), 28, '_days_in_month 2019-02';
     is _days_in_month(2019, 3), 31, '_days_in_month 2019-03';
@@ -82,6 +84,7 @@ subtest 'date functions' => sub {
     is _days_in_month(2019,12), 31, '_days_in_month 2019-12';
     is _days_in_month(2020, 2), 29, '_days_in_month 2020-02';
 
+    is _is_leap_year(1889), 0, '_is_leap_year 1889';
     is _is_leap_year(1900), 0, '_is_leap_year 1900';
     is _is_leap_year(1901), 0, '_is_leap_year 1901';
     is _is_leap_year(1904), 1, '_is_leap_year 1904';
@@ -126,7 +129,7 @@ subtest '_get_config_options' => sub {
     $href = _get_config_options($fname);
     @got_keys = sort keys $href->%*;
 
-    @expected_keys = qw(aliases cache);
+    @expected_keys = qw(aliases cachedir);
     is_deeply \@got_keys, \@expected_keys, "_get_config_options($fname)";
 };
 

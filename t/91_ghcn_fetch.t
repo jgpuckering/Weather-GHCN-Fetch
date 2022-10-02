@@ -65,8 +65,8 @@ if ( check_install(module=>'Tk') and check_install(module=>'Tk::Getopt')) {
 my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 
 @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
-ok Weather::GHCN::App::Fetch::valid_report_type('detail', \@opttable),   'valid_report_type - detail valid';
-ok !Weather::GHCN::App::Fetch::valid_report_type('xxx', \@opttable), 'valid_report_type - xxx invalid';
+ok  Weather::GHCN::App::Fetch::valid_report_type('detail',\@opttable),  'valid_report_type - detail valid';
+ok !Weather::GHCN::App::Fetch::valid_report_type('xxx',\@opttable),     'valid_report_type - xxx invalid';
 
-ok Weather::GHCN::App::Fetch::valid_refresh_option('never', \@opttable),   'valid_refresh_option - never valid';
-ok !Weather::GHCN::App::Fetch::valid_refresh_option('xxx', \@opttable), 'valid_refresh_option - xxx invalid';
+ok  Weather::GHCN::App::Fetch::valid_refresh_option('never',\@opttable),'valid_refresh_option - never valid';
+ok !Weather::GHCN::App::Fetch::valid_refresh_option('xxx',\@opttable),  'valid_refresh_option - xxx invalid';

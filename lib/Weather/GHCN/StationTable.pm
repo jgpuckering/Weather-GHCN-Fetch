@@ -69,12 +69,12 @@ our $VERSION = 'v0.0.000';
 use Carp                qw( carp croak );
 use Const::Fast;
 use HTML::Entities;
+use DateTime;
 use Devel::Size;
 use File::HomeDir;
-use File::Spec;
 use FindBin;
 use Math::Trig;
-use Time::Piece;
+use Path::Tiny;
 use Try::Tiny;
 use Weather::GHCN::Common        qw( :all );
 use Weather::GHCN::TimingStats;
@@ -1092,13 +1092,11 @@ method load_stations () {
 
     # get the caching configuration and use it to create a cache for URI::Fetch
     # if no cache config, then $_cache will be undef and fetches will be uncached
-    if ($config_href and $config_href->{'cache'} ) {
-        my $cache_opt = $config_href->{'cache'};
-        my $namespace = $cache_opt->{'namespace'} // 'ghcn';
-        my $root = $cache_opt->{'root'};
-        my $root_abs = File::Spec->rel2abs( $root, $FindBin::Bin );
 
-        $_cache = Weather::GHCN::CacheURI->new($root_abs);
+$DB::single = 2;   # break and do 'n' (use 1 for 's')
+    if ($config_href and $config_href->{'cachedir'} ) {
+        my $cachedir_abs = path( $config_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
+        $_cache = Weather::GHCN::CacheURI->new($cachedir_abs);
     }
 
     my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $_cache, 'URI::Fetch_stn');
@@ -1966,8 +1964,8 @@ method _report_gaps ($stn, $gaps_href) {
         }
     }
 
-    my $now = localtime;
-    my ($this_yyyy, $this_mm) = ($now->year, $now->mon);
+    my $today = DateTime->today;
+    my ($this_yyyy, $this_mm) = ($today->year, $today->month);
 
     foreach my $yyyy ( @years ) {
         # don't report gaps for years that aren't within -range (or -baseline if -anomalies)
@@ -2335,16 +2333,20 @@ sub _ddivide ($x, $y) {
 #----------------------------------------------------------------------
 
 sub _days_in_month ($year, $month) {
-    return _timepiece($year, $month)->month_last_day;
+    my $dt = DateTime->last_day_of_month( 
+        year => $year+0, 
+        month => $month+0
+    );
+    return $dt->day;
 }
 
 sub _days_in_year ($year) {
     ## no critic [ProhibitMagicNumbers]
-    return 365 + _is_leap_year($year);
+    return 365 + _is_leap_year( $year+0 );
 }
 
 sub _is_leap_year ($year) {
-    return _timepiece($year)->is_leap_year;
+    return DateTime->new( year => $year+0 )->is_leap_year;
 }
 
 sub _month_names (@mm) {
@@ -2358,8 +2360,9 @@ sub _month_names (@mm) {
             push @result, '???';
         }
         elsif ($mm > 0 and $mm < 13) {
-            # note: year is irrelevant, we just need something valid
-            push @result, _timepiece(2000,$mm)->monname;
+            # note: year and day are irrelevant, we just need something valid
+            my $dt = DateTime->new(year=>2000, month=>$mm+0, day=>1);
+            push @result, $dt->month_abbr;
         }
         else {
             push @result, '???';
@@ -2367,12 +2370,6 @@ sub _month_names (@mm) {
     }
 
     return wantarray ? @result : shift @result;
-}
-
-sub _timepiece ($year, $month=1, $day=1) {
-    # adding zero to coerce string to number
-    my $ymd = sprintf '%04d-%02d-%02d', $year+0, $month+0, $day+0;
-    return Time::Piece->strptime($ymd,'%F')
 }
 
 # Seasonal decades are based on seasonal years.
@@ -2429,10 +2426,7 @@ sub _memsize ( $ref, $opt_performance ) {
         nonetwork   => -1,      # refresh cache if stale this year
     },
     config_options => {
-        cache => {
-            root => 'c:/ghcn_cache',
-            namespace => 'ghcn',
-        },
+        cachedir => 'c:/ghcn_cache',
     },
   );
 

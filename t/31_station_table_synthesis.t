@@ -97,11 +97,7 @@ my $Opt;
 
 # get config options from the test options file instead of from
 # the default, which is $HOME/.ghcn_fetch.yaml
-my $cache_for_testing = { 
-    cache => { 
-        root => $cachedir, 
-    } 
-};
+my $cache_for_testing = { cachedir => $cachedir };
 
 # skip to START_TESTING if the word 'debug' is a command line argument
 goto START_TESTING 
