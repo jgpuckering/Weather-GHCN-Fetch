@@ -55,6 +55,7 @@ use Const::Fast;
 use Fcntl qw( :DEFAULT );
 use File::stat;
 use Path::Tiny;
+use Try::Tiny;
 use Time::Piece;
 use LWP::Simple;
 
@@ -87,20 +88,68 @@ BUILD ($cache_root) {
 =head2 clean_cache
 
 Removes all the files in the cache, but leaves the cache directory.
-Returns a reference to an array of errors, which will be empty if
-there were no errors.
+Returns a list of errors for any files that couldn't be removed.
 
 =cut
 
 method clean_cache () {
-    my $error_aref;
-    path($_root_dir)->remove_tree(
-        {
-            keep_root   => $TRUE,
-            error       => \$error_aref,
-        }
-    );
-    return $error_aref;
+    my $re = qr{ \A [\w-]+ [.] (txt|dly) \Z }xms;
+    my @files = path($_root_dir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
+}
+
+=head2 clean_data_cache
+
+Removes all the daily weather data files (*.dly) from the cache, but 
+leaves the cache directory.  Returns a list of errors for any files 
+that couldn't be removed.
+
+=cut
+
+method clean_data_cache () {
+    # delete the daily weather data files in the cache
+    my $re = qr{ \A \w+[.]dly \Z }xms;
+    my @files = path($_root_dir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
+}
+
+=head2 clean_station_cache
+
+Removes the station list and station inventory files (ghcnd-*.txt) 
+from the cache, but leaves the cache directory. Returns a list of 
+errors for any files that couldn't be removed.
+
+=cut
+
+method clean_station_cache () {
+    # delete the station list and inventory files in the cache
+    my $re = qr{ \A ghcnd-\w+[.]txt \Z }xms;
+    my @files = path($_root_dir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
 }
 
 =head2 fetch ($uri, $refresh="yearly")
@@ -226,6 +275,10 @@ method store ($uri, $content) {
     _write_file( $store_file, $content );
 }
 
+# method purge_cache($mtime) {
+    # delete daily data files older than $mtime
+# }
+
 =item remove ($uri)
 
 Remove the cache file associated with this URI.
@@ -238,13 +291,6 @@ method remove ($uri) {
     unlink($file);
 }
 
-# method clear_station_cache () {
-    # delete the station list and inventory files in the cache
-# }
-
-# method purge_cache($percent=80) {
-    # delete $percent % of data files based on oldest access time
-# }
 
 
 #---------------------------------------------------------------------

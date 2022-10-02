@@ -6,7 +6,6 @@ use v5.18;
 
 use Test::More tests => 1;
 
-use Config;
 use FindBin;
 use lib $FindBin::Bin . '/../lib';
 
@@ -29,21 +28,8 @@ my $errors_aref;
 if ( $clean ) {
     if (-e $cachedir) {
         my $cache = Weather::GHCN::CacheURI->new($cachedir);
-        my $errors_aref = $cache->clean_cache;
-        my %errmsg;
-        foreach my $href ($errors_aref->@*) {
-            my @v = values $href->%*;
-            foreach my $msg (@v) {
-                $errmsg{$msg}++;
-            }
-        }
-        while (my ($k,$v) = each %errmsg) {
-            diag '*E* ' . $k . " ($v times)";
-        }
-        my $errcnt = $errors_aref->@*;
-        
-        ok $errcnt == 0, 'removed contents of cache ' . $cachedir;
-            
+        my @errors = $cache->clean_cache;
+        is_deeply \@errors, [], 'removed contents of cache ' . $cachedir;            
     } else {
         ok 1, "*I* cache folder doesn't exist yet: " . $cachedir;
     }
