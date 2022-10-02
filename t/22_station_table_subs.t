@@ -129,7 +129,7 @@ subtest '_get_config_options' => sub {
     $href = _get_config_options($fname);
     @got_keys = sort keys $href->%*;
 
-    @expected_keys = qw(aliases cachedir);
+    @expected_keys = qw(aliases);
     is_deeply \@got_keys, \@expected_keys, "_get_config_options($fname)";
 };
 

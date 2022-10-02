@@ -71,7 +71,6 @@ use Const::Fast;
 use HTML::Entities;
 use DateTime;
 use Devel::Size;
-use File::HomeDir;
 use FindBin;
 use Math::Trig;
 use Path::Tiny;
@@ -95,7 +94,7 @@ const my $NL     => qq(\n); # perl platform-universal newline
 const my $TRUE   => 1;      # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 
-const my $CONFIG_FILE => '$HOME/.ghcn_fetch.yaml';
+const my $CONFIG_FILE => '~/.ghcn_fetch.yaml';
 
 const my %MMM_TO_MM => (
     Jan=>1, Feb=>2, Mar=>3, Apr=>4, May=>5, Jun=>6,
@@ -154,26 +153,26 @@ field $_stnid_filter     { {} };     # [1] hashref of station id's to be loaded,
 field $_return_list      { $FALSE }; # [2] return method results as tsv if true, a list if false
 
 # private fields that are intialized by load()
-field $_cache;                       # [3] Cache::FileCache object
-field $_measures_obj;                # [4] Measures object
+field $_measures_obj;                # [3] Measures object
 
 # private fields that are intialized by get_header()
-field $_measure_begin_idx {0};       # [5] column index where measures will go in the output
+field $_measure_begin_idx {0};       # [4] column index where measures will go in the output
 
 # private fields that are intialized by new() i.e. automatically or within sub BUILD
-field %_hstats;                      # [6] Hash for capturing data field hash statistics
-field $_tstats;                      # [7] TimingStats object (or undef)
+field %_hstats;                      # [5] Hash for capturing data field hash statistics
+field $_tstats;                      # [6] TimingStats object (or undef)
 
 # data fields
-field %_station;                     # [8]  loaded station objects, key station_id
-field $_aggregate_href   { {} } ;    # [9]  hashref of aggregated (summarized0 daily data
-field $_flag_cnts_href   { {} } ;    # [10] hashref of flag counts
-field $_daily_href       { {} } ;    # [11] hashref of most recent daily data loaded
-field $_baseline_href    { {} } ;    # [12] hashref of baseline data
+field %_station;                     # [7]  loaded station objects, key station_id
+field $_aggregate_href   { {} } ;    # [8]  hashref of aggregated (summarized0 daily data
+field $_flag_cnts_href   { {} } ;    # [9]  hashref of flag counts
+field $_daily_href       { {} } ;    # [10] hashref of most recent daily data loaded
+field $_baseline_href    { {} } ;    # [11] hashref of baseline data
 
 # readable fields that are populated set_options
-field $opt_obj              :reader; # [13] $ghcn_opt_obj->opt_obj (a Hash::Wrap of $ghcn_opt_obj->opt_href)
-field $opt_href             :reader; # [14] $ghcn_opt_obj->opt_href
+field $opt_obj              :reader; # [12] $ghcn_opt_obj->opt_obj (a Hash::Wrap of $ghcn_opt_obj->opt_href)
+field $opt_href             :reader; # [13] $ghcn_opt_obj->opt_href
+field $cache                :reader; # [14] cache object
 field $config_file          :reader; # [15]
 field $config_href          :reader; # [16] hash reference containing cache and alias options
 
@@ -1006,7 +1005,7 @@ method load_data ( %args ) {
     my $ii = 0;
     foreach my $stn ( @station_objs ) {
         my $daily_url = $GHCN_DATA . $stn->id . '.dly';
-        my $content = $self->_fetch_url($daily_url, $_cache, 'URI::Fetch_daily');
+        my $content = $self->_fetch_url($daily_url, $cache, 'URI::Fetch_daily');
 
         if ($progress_callback) {
             no strict 'refs';  ## no critic [ProhibitNoStrict]
@@ -1091,15 +1090,16 @@ cos-surface-network-gsn-program-overview>
 method load_stations () {
 
     # get the caching configuration and use it to create a cache for URI::Fetch
-    # if no cache config, then $_cache will be undef and fetches will be uncached
+    # if no cache config, then $cache will be undef and fetches will be uncached
 
-$DB::single = 2;   # break and do 'n' (use 1 for 's')
     if ($config_href and $config_href->{'cachedir'} ) {
         my $cachedir_abs = path( $config_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
-        $_cache = Weather::GHCN::CacheURI->new($cachedir_abs);
+        $cache = Weather::GHCN::CacheURI->new($cachedir_abs);
+    } else {
+        $cache = Weather::GHCN::CacheURI->new($EMPTY);
     }
 
-    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $_cache, 'URI::Fetch_stn');
+    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $cache, 'URI::Fetch_stn');
 
     if ( $stations_content =~ m{<title>(.*?)</title>}xms ) {
         croak '*E* unable to fetch data from ' . $GHCN_STN_LIST_URL . ': ' . $1;
@@ -1256,7 +1256,7 @@ This option is an alternative to config_options.  (If both options
 are specifed, then config_options  will take precedence.)
 
 If config_filespec is an empty string, then the filespec will default
-to $HOME\.ghcn_fetch.yaml (%UserProfile% on Windows).
+to ~\.ghcn_fetch.yaml (%UserProfile% on Windows).
 
 If config_filespec is undef, then an empty configuration will be
 used; i.e. there will be no cache and no aliases.
@@ -1318,7 +1318,8 @@ method set_options (%arg) {
 
     if ( $arg{'config_file'} ) {
         $valid{'config_file'}++;
-        $config_file = $arg{'config_file'};
+        # if a config file is provided, turn it into an absolute path
+        $config_file = path($arg{'config_file'})->absolute->stringify;
         $config_href = _get_config_options($config_file);
         # update the config options hash in the Options object
         $_ghcn_opt_obj->config_href = $config_href;
@@ -1623,11 +1624,11 @@ method _compute_quality ($stn, $context_msg, $day_count, $range, $quality) {
     return $insufficient_quality;
 }
 
-method _fetch_url ($url, $cache, $timer_label=$EMPTY) {
+method _fetch_url ($url, $my_cache, $timer_label=$EMPTY) {
 
     $_tstats->start($timer_label) if $timer_label;
 
-    my ($from_cache, $content) = $cache->fetch($url, $Opt->refresh);
+    my ($from_cache, $content) = $my_cache->fetch($url, $Opt->refresh);
 
     croak '*E* unable to fetch data from ' . $url
         unless $content;
@@ -1818,7 +1819,7 @@ method _load_daily_data ($stn, $stn_content) {
 
 method _load_station_inventories () {
 
-    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, $_cache, 'URI::Fetch_inv');
+    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, $cache, 'URI::Fetch_inv');
 
     # Now scan the station inventory list, to get the active range for each station
     # - note there are multiple records, one for each element and active range combo
@@ -2110,22 +2111,12 @@ sub _get_config_options ($config_file=$EMPTY) {
 
 sub _get_config_filespec ($config_file) {
 
-    # an EMPTY arg will default to $HOME/.ghcn_fetch.yaml
+    # an EMPTY arg will default to ~/.ghcn_fetch.yaml
     $config_file ||= $CONFIG_FILE;
 
-    my $homedir = File::HomeDir->my_home;
-    #debug# say {$fh} 'homedir:                        ', $homedir;
-
-    my $config_filespec = File::Spec->canonpath($config_file);
+    # Path::Tiny::path will replace ~ or ~username with the corresponding path
+    my $config_filespec = path($config_file);
     #debug# say {$fh} 'config_filespec (canon):        ', $config_filespec;
-
-    $config_filespec =~ s{ \A \$HOME }{$homedir}xms;
-    #debug# say {$fh} 'config_filespec (s/$HOME/):     ', $config_filespec;
-
-    if ( not File::Spec->file_name_is_absolute($config_filespec) ) {
-        $config_filespec = File::Spec->catfile( $homedir, $config_filespec );
-        #debug# say {$fh} 'config_filespec wasnt absolute: ', $config_filespec;
-    }
 
     return $config_filespec;
 }

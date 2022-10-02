@@ -3,19 +3,19 @@
 ## no critic (Documentation::RequirePodAtEnd)
 =head1 NAME
 
-Weather::GHCN::CacheFile - File-based cache using one folder for all cache files
+Weather::GHCN::CacheURI - URI page fetch with file-based caching
 
 =head1 SYNOPSIS
 
-    use Weather::GHCN::CacheFile;
+    use Weather::GHCN::CacheURI;
 
-    my $cache = Weather::GHCN::CacheFile->new($root_dir);
+    my $cache_uri = Weather::GHCN::CacheURI->new($cachedir);
 
-    my ($from_cache, $content) = $cache->fetch($uri);
+    my ($from_cache, $content) = $cache_uri->fetch($uri);
 
-    my $content = $cache->load($uri);
+    my $content = $cache_uri->load($uri);
 
-    $cache->store($uri, $content);
+    $cache_uri->store($uri, $content);
 
 =head1 DESCRIPTION
 
@@ -24,10 +24,10 @@ content on the filesystem so that it can be retrieved subsequently
 without a network access.
 
 Unlike caching performed by Fetch::URI or LWP, no Etags or
-Last-Modified-Data or other data is included with the content data.
+Last-Modified-Date or other data is included with the content data.
 This metadata can be an obstacle to platform portability.
-Essentially, it's raw content that is stored.  If the content is
-platform neutral, then the cache file can be used on any platform.
+Essentially, just utf-8 page content that is stored.  That should be
+neutral enough that the cache file can be used on another platform.
 This is a benefit to unit testing, because tests can be constructed
 to fetch pages, and the cached pages can be packaged with the tests.
 This allows the tests to run faster, and without network access.
@@ -37,7 +37,7 @@ the content of the NOAA GHCN weather repository.  The files in that
 repository are simple ASCII files with uncomplicated names.  The
 caching algorithm simply strips off the URI path and stores the file
 using the filename found in the repository; e.g. 'ghcnd-stations.txt' or
-'CA006105887.dly'.  All files are kept in the root directory, since
+'CA006105887.dly'.  All files are kept in the cache directory, since
 all filenames are expected to be unique.
 
 =cut
@@ -69,20 +69,36 @@ const my $ONE_DAY => 24*60*60;   # number of seconds in a day
 const my $FROM_CACHE => $TRUE;
 const my $FROM_URI   => $FALSE;
 
-field $_root_dir          :reader;
+field $_cachedir;
 
 =head1 METHODS
 
-=head2 new ($root_dir)
+=head2 new ($cachedir)
 
 New instances of this class must be provided a location for the cache
-files upon creation ($root_dir).  This directory will be created as
+files upon creation ($cachedir).  This directory will be created as
 needed on the first cache store.
 
 =cut
 
-BUILD ($cache_root) {
-    $_root_dir = $cache_root;
+BUILD ($cachedir) {
+    $_cachedir = $cachedir;
+}
+
+=head2 cachedir ($dir=undef)
+
+Returns the currently defined cache location.  
+
+If given an argument, changes the cache location to that value if
+it is a directory that exists.  Otherwise it throws an exception.
+
+=cut
+
+method cachedir ($dir=undef) {
+    return $_cachedir if not defined $dir;
+    croak "*E* directory $dir doesn't exist"
+        unless -d $dir;
+    $_cachedir = $dir;
 }
 
 =head2 clean_cache
@@ -94,7 +110,7 @@ Returns a list of errors for any files that couldn't be removed.
 
 method clean_cache () {
     my $re = qr{ \A [\w-]+ [.] (txt|dly) \Z }xms;
-    my @files = path($_root_dir)->children( $re );
+    my @files = path($_cachedir)->children( $re );
     my @errors;
     foreach my $f (@files) {
         try {
@@ -117,7 +133,7 @@ that couldn't be removed.
 method clean_data_cache () {
     # delete the daily weather data files in the cache
     my $re = qr{ \A \w+[.]dly \Z }xms;
-    my @files = path($_root_dir)->children( $re );
+    my @files = path($_cachedir)->children( $re );
     my @errors;
     foreach my $f (@files) {
         try {
@@ -140,7 +156,7 @@ errors for any files that couldn't be removed.
 method clean_station_cache () {
     # delete the station list and inventory files in the cache
     my $re = qr{ \A ghcnd-\w+[.]txt \Z }xms;
-    my @files = path($_root_dir)->children( $re );
+    my @files = path($_cachedir)->children( $re );
     my @errors;
     foreach my $f (@files) {
         try {
@@ -197,14 +213,19 @@ and the cached page was inserted within the last <number> days.
 =cut
 
 method fetch ($uri, $refresh="yearly") {
+    
+    my $from_cache;
+    my $content;
+
+    if (not $_cachedir) {
+        ($from_cache, $content) = $self->_fetch_without_cache($uri);
+        return ($from_cache, $content);
+    }
 
     my $refresh_lc = lc $refresh;
 
     carp '*W* no cache location therefore no caching of HTTP queries available'
-        if not $_root_dir and $refresh_lc ne 'never';
-
-    my $from_cache;
-    my $content;
+        if not $_cachedir and $refresh_lc ne 'never';
 
     if ($refresh_lc eq 'always') {
         ($from_cache, $content) = $self->_fetch_refresh_always($uri);
@@ -263,8 +284,8 @@ files can be used for unit testing on multiple platforms.
 
 method store ($uri, $content) {
 
-    croak "*E* cache directory doesn't exist: " . $_root_dir
-        unless -d $_root_dir;
+    croak "*E* cache directory doesn't exist: " . $_cachedir
+        unless -d $_cachedir;
 
     my $store_file = $self->_path_to_key($uri);
     return if not defined $store_file;
@@ -370,6 +391,14 @@ method _fetch_refresh_n_days ($uri, $cutoff_mtime) {
     return ($FROM_URI, $content);
 }
 
+method _fetch_without_cache ($uri) {
+    # check for a fresher copy on the server
+    my $key = $self->_uri_to_key($uri);
+
+    my $content = get($uri);
+    return ($FROM_URI, $content);
+}
+
 method _uri_to_key ($uri) {
     my @parts = split '/', $uri;
     my $key = $parts[-1];  # use the last part as the key
@@ -386,7 +415,7 @@ method _path_to_key ($uri) {
 
     my $key = $self->_uri_to_key( $uri );
 
-    my $filepath = path($_root_dir)->child($key)->stringify;
+    my $filepath = path($_cachedir)->child($key)->stringify;
 
     return $filepath;
 }

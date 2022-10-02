@@ -130,7 +130,7 @@ const my $NL     => qq(\n);    # perl universal newline (any platform)
 const my $TRUE   => 1;         # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 
-const my $CONFIG_FILE => '$HOME/.ghcn_fetch.yaml';
+const my $CONFIG_FILE => '~/.ghcn_fetch.yaml';
 
 const my $STN_THRESHOLD     => 100;     # ask if number of selected stations exceeds this
 
@@ -353,6 +353,7 @@ sub run ($progname, $argv_aref) {
     say 'Script:';
     say $TAB, $PROGRAM_NAME;
     say "\tWeather::GHCN::StationTable version " . $Weather::GHCN::StationTable::VERSION;
+    say $TAB, 'Cache directory: ' . $ghcn->cache->cachedir;
     say $TAB, 'Config file: ' . $ghcn->config_file;
 
     if ( $Opt->performance ) {

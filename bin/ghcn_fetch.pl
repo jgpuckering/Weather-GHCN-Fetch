@@ -429,8 +429,9 @@ Display the Synopsis section of this documentation.
 =head1 CONFIGURATION FILE
 
 At startup, ghcn_fetch will look for the file .ghcn_fetch.yaml in
-either %UserProfile% (Windows) or $HOME (unix/linux) in order to capture some
-additional options. The file content should contain something like this:
+the user home directory (~ on Unix, %UserProfile% on Windows) 
+in order to capture some additional options. The file content should 
+contain something like this:
 
     ---
     cache:
