@@ -49,6 +49,7 @@ const my $EMPTY => q();
 const my $DASH  => q(-);
 const my $NEWLINE => qq(\n);
 
+const my $DEFAULT_PROFILE_FILE => '~/.ghcn_fetch.yaml';
 const my $ALIAS_NAME_RE => qr{ \A [_]?[[:lower:]]+ \Z }xms;
 
 =head1 METHODS
@@ -93,7 +94,8 @@ my $Tk_opt_table = [
     ['performance', '!',    undef, label => 'Report performance statistics'],
     ['verbose',     '!',    undef, label => 'Print information messages'],
     ['dataonly',    '!',    undef, label => 'Only print the data table'],
-    ['config',      '=s',   undef, label => 'Configuration options (for testing only)', nogui => 1],
+    ['profile',     '=s',   $DEFAULT_PROFILE_FILE, 
+                                   label => 'Configuration options (for testing only)', nogui => 1],
 
     'Date filters',
     ['range',       '=s',   undef, label => 'Filter selected station data by year range'],
@@ -125,7 +127,7 @@ my $Tk_opt_table = [
     ['label',       '!',    undef, label => 'Label KML placemarks'],
 ];
 
-    ######################################################################
+#####################################################################
 # Class fields
 ######################################################################
 

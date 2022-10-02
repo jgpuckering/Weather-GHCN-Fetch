@@ -137,7 +137,7 @@ subtest 'set_options with config_file' => sub {
 
     is @errors, 0, 'set_options returned no errors';
 
-    ok $ghcn->config_file, 'config_file accessor';
+    ok $ghcn->profile_file, 'config_file accessor';
     ok $ghcn->opt_href->{location} eq 'CA006106000,CA006106001', 'alias yow from config_options ($ghcn->opt_href->{location})';
     ok $opt->location eq 'CA006106000,CA006106001', 'alias yow from config_options ($opt->location)';
 };
@@ -236,14 +236,16 @@ subtest 'station-level data (-report detail)' => sub {
 
 # for test coverage
 subtest 'field accessors' => sub {
-    ok $ghcn->opt_obj,              'opt_obj';
-    ok $ghcn->opt_href,             'opt_href';
-    # config_file will be tested in subtest "set_options with config_file"
-    ok $ghcn->config_href,          'config_href';
-    ok $ghcn->stn_count,            'stn_count';
-    ok $ghcn->stn_selected_count,   'stn_selected_count';
-    ok $ghcn->stn_filtered_count,   'stn_filtered_count';
-    ok $ghcn->missing_href,         'missing_href';
+    can_ok $ghcn, 'opt_obj';
+    can_ok $ghcn, 'opt_href';
+    can_ok $ghcn, 'profile_file';
+    can_ok $ghcn, 'profile_href';
+    can_ok $ghcn, 'stn_count';
+    can_ok $ghcn, 'stn_selected_count';
+    can_ok $ghcn, 'stn_filtered_count';
+    can_ok $ghcn, 'missing_href';
+    can_ok $ghcn, 'stnid_filter_href';
+    can_ok $ghcn, 'return_list';
 };
 
 subtest 'daily data (-report daily)' => sub {

@@ -93,7 +93,7 @@ const my $NL     => qq(\n); # perl platform-universal newline
 const my $TRUE   => 1;      # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 
-const my $CONFIG_FILE => '~/.ghcn_fetch.yaml';
+const my $DEFAULT_PROFILE_FILE => '~/.ghcn_fetch.yaml';
 
 const my %MMM_TO_MM => (
     Jan=>1, Feb=>2, Mar=>3, Apr=>4, May=>5, Jun=>6,
@@ -148,40 +148,42 @@ my $Opt;
 
 # private fields that are intialized by set_options()
 field $_ghcn_opt_obj;                # [0] Weather::GHCN::Options object providing filtering and other options
-field $_stnid_filter     { {} };     # [1] hashref of station id's to be loaded, or empty hash
-field $_return_list      { $FALSE }; # [2] return method results as tsv if true, a list if false
 
 # private fields that are intialized by load()
-field $_measures_obj;                # [3] Measures object
+field $_measures_obj;                # [1] Measures object
 
 # private fields that are intialized by get_header()
-field $_measure_begin_idx {0};       # [4] column index where measures will go in the output
+field $_measure_begin_idx {0};       # [2] column index where measures will go in the output
 
 # private fields that are intialized by new() i.e. automatically or within sub BUILD
-field %_hstats;                      # [5] Hash for capturing data field hash statistics
-field $_tstats;                      # [6] TimingStats object (or undef)
+field %_hstats;                      # [3] Hash for capturing data field hash statistics
+field $_tstats;                      # [4] TimingStats object (or undef)
 
 # data fields
-field %_station;                     # [7]  loaded station objects, key station_id
-field $_aggregate_href   { {} } ;    # [8]  hashref of aggregated (summarized0 daily data
-field $_flag_cnts_href   { {} } ;    # [9]  hashref of flag counts
-field $_daily_href       { {} } ;    # [10] hashref of most recent daily data loaded
-field $_baseline_href    { {} } ;    # [11] hashref of baseline data
+field %_station;                     # [5] loaded station objects, key station_id
+field $_aggregate_href   { {} } ;    # [6] hashref of aggregated (summarized0 daily data
+field $_flag_cnts_href   { {} } ;    # [7] hashref of flag counts
+field $_daily_href       { {} } ;    # [8] hashref of most recent daily data loaded
+field $_baseline_href    { {} } ;    # [9] hashref of baseline data
 
-# readable fields that are populated set_options
-field $opt_obj              :reader; # [12] $ghcn_opt_obj->opt_obj (a Hash::Wrap of $ghcn_opt_obj->opt_href)
-field $opt_href             :reader; # [13] $ghcn_opt_obj->opt_href
-field $cache                :reader; # [14] cache object
-field $config_file          :reader; # [15]
-field $config_href          :reader; # [16] hash reference containing cache and alias options
+# readable fields that are populated by set_options
+field $_opt_obj             :reader; # [10] $ghcn_opt_obj->opt_obj (a Hash::Wrap of $ghcn_opt_obj->opt_href)
+field $_opt_href            :reader; # [11] $ghcn_opt_obj->opt_href
+field $_cache               :reader; # [12] cache object
+field $_profile_file        :reader; # [13]
+field $_profile_href        :reader; # [14] hash reference containing cache and alias options
 
 # other fields with read methods
-field $stn_count            :reader;         # [17]
-field $stn_selected_count   :reader;         # [18]
-field $stn_filtered_count   :reader;         # [19]
-field $missing_href         :reader  { {} }; # [20]
+field $_stn_count            :reader;         # [15]
+field $_stn_selected_count   :reader;         # [16]
+field $_stn_filtered_count   :reader;         # [17]
+field $_missing_href         :reader  { {} }; # [18]
 
-=head1 FIELD ACCESSORS
+# fields for API use that are readable and writable
+field $_stnid_filter_href   :accessor;       # [19] hashref of station id's to be loaded, or empty hash
+field $_return_list         :accessor;       # [20] return method results as tsv if true, a list if false
+
+=head1 FIELDS (read-only)
 
 =over 4
 
@@ -222,6 +224,27 @@ processing, excluding those rejected due to errors or other criteria.
 
 Returns a hash of the missing months and days for the selected
 data.
+
+=back
+
+=head1 FIELDS (read or write)
+
+=over 4
+
+=item return_list(<bool>)
+
+For API use.  By default, get methods return a tab-separated string 
+of results. If return_list is set to a perl true value, then these 
+methods will return a list (or list of lists).  If no argument is 
+given, the current value of return_list is returned.
+
+=item stnid_filter_href(\%stnid_filter)
+
+For API use.  With no argument, the current value is returned. If an 
+argument is given, it must be a hash reference the keys of which are 
+the specific station id's you want to fetch and process. When this is 
+used, many filtering options set via set_options will be overridden;
+e.g. country, state, location etc.
 
 =back
 
@@ -590,10 +613,10 @@ method get_missing_data_ranges ( %args ) {
     push @output, ['Missing year, months and days by station id and year (for selected stations):']
         unless $args{no_header};
 
-    foreach my $stnid ( sort keys $missing_href->%* ) {
+    foreach my $stnid ( sort keys $_missing_href->%* ) {
         my $stnobj = $_station{$stnid};
         next if $stnobj->error_count > 0;
-        my $yyyy_href = $missing_href->{$stnid};
+        my $yyyy_href = $_missing_href->{$stnid};
 
         foreach my $yyyy ( sort keys $yyyy_href->%* ) {
             my $values_href = $yyyy_href->{$yyyy};
@@ -664,8 +687,8 @@ method get_missing_rows ( %args ) {
     my %loc;
     map { $loc{$_} = $_station{$_}->name } keys %_station;
 
-    foreach my $stnid ( sort keys $missing_href->%* ) {
-        my $yyyy_href = $missing_href->{$stnid};
+    foreach my $stnid ( sort keys $_missing_href->%* ) {
+        my $yyyy_href = $_missing_href->{$stnid};
         foreach my $yyyy ( sort keys $yyyy_href->%* ) {
             my $values_href = $yyyy_href->{$yyyy};
             foreach my $v ( keys $values_href->%* ) {
@@ -951,7 +974,7 @@ get_missing_data_ranges.
 =cut
 
 method has_missing_data () {
-    my $keycount = ( keys $missing_href->%* );
+    my $keycount = ( keys $_missing_href->%* );
     return $keycount ? $TRUE : $FALSE;
 }
 
@@ -1004,7 +1027,7 @@ method load_data ( %args ) {
     my $ii = 0;
     foreach my $stn ( @station_objs ) {
         my $daily_url = $GHCN_DATA . $stn->id . '.dly';
-        my $content = $self->_fetch_url($daily_url, $cache, 'URI::Fetch_daily');
+        my $content = $self->_fetch_url($daily_url, $_cache, 'URI::Fetch_daily');
 
         if ($progress_callback) {
             no strict 'refs';  ## no critic [ProhibitNoStrict]
@@ -1089,16 +1112,16 @@ cos-surface-network-gsn-program-overview>
 method load_stations () {
 
     # get the caching configuration and use it to create a cache for URI::Fetch
-    # if no cache config, then $cache will be undef and fetches will be uncached
+    # if no cache config, then $_cache will be undef and fetches will be uncached
 
-    if ($config_href and $config_href->{'cachedir'} ) {
-        my $cachedir_abs = path( $config_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
-        $cache = Weather::GHCN::CacheURI->new($cachedir_abs);
+    if ($_profile_href and $_profile_href->{'cachedir'} ) {
+        my $cachedir_abs = path( $_profile_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
+        $_cache = Weather::GHCN::CacheURI->new($cachedir_abs);
     } else {
-        $cache = Weather::GHCN::CacheURI->new($EMPTY);
+        $_cache = Weather::GHCN::CacheURI->new($EMPTY);
     }
 
-    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $cache, 'URI::Fetch_stn');
+    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $_cache, 'URI::Fetch_stn');
 
     if ( $stations_content =~ m{<title>(.*?)</title>}xms ) {
         croak '*E* unable to fetch data from ' . $GHCN_STN_LIST_URL . ': ' . $1;
@@ -1115,7 +1138,7 @@ method load_stations () {
     # Scan the station table
     # - filtering on country, state, location and GIS distance according to options
     while ( my $line = <$stn_fh> ) {
-        $stn_count++;
+        $_stn_count++;  # increment the stn count in the object
 
         # |---  0---|--- 10---|--- 20---|--- 30---|--- 40---|--- 50---|--- 60---
         # |123456789|123456789|123456789|123456789|123456789|123456789|123456789
@@ -1125,7 +1148,7 @@ method load_stations () {
         ## no critic [ProhibitMagicNumbers]
         my $id = substr $line, 0, 11;
 
-        next if $_stnid_filter->%* and not $_stnid_filter->{$id};
+        next if $_stnid_filter_href and $_stnid_filter_href->%* and not $_stnid_filter_href->{$id};
 
         my $lat   = 0 + substr $line, 12, 8;    # coerce to number
         my $long  = 0 + substr $line, 21, 9;    # coerce to number
@@ -1179,7 +1202,7 @@ method load_stations () {
 
     $_tstats->stop('Parse_stn');
 
-    $stn_selected_count = keys %_station;
+    $_stn_selected_count = keys %_station;
 
     # assign a unique index to each station with matching coordinates
     my $ii = 0;
@@ -1192,7 +1215,7 @@ method load_stations () {
         $stn->idx = $stnidx{$stn->coordinates};
     }
 
-    $stn_filtered_count = $self->_load_station_inventories();
+    $_stn_filtered_count = $self->_load_station_inventories();
 
     return \%_station;
 }
@@ -1267,13 +1290,6 @@ configuration options as described in section CONFIGURATION OPTION.
 Alternatively, config_file can be used to specify a file containing
 the configuation specification in YAML format.
 
-=item stnid_filter => \%stnid_filter
-
-This optional argument should be a reference to a hash whose keys are
-the specific station id's which are to be fetched and processed.
-When this is used, many filtering options via %opt will be overridden
-(e.g. -country).
-
 =item timing_stats => $TimingStats_obj
 
 This optional argument should point to a TimingStats object that was
@@ -1284,12 +1300,6 @@ created by the caller and will be used to collect timing statistics.
 This optional argument should be a reference to a hash that was
 created by the caller and will be used to collect performance and
 memory statistics.
-
-=item return_list => <bool>
-
-By default, get methods return a tab-separated string of results.
-If return_list is set to true, then these methods will return a
-list (or list of lists).
 
 =back
 
@@ -1306,22 +1316,22 @@ method set_options (%arg) {
         $_ghcn_opt_obj //= Weather::GHCN::Options->new();
         $user_options = $arg{'user_options'};
         # combine user-specified options with the defaults
-        ($opt_href, $opt_obj) = $_ghcn_opt_obj->combine_options($user_options);
+        ($_opt_href, $_opt_obj) = $_ghcn_opt_obj->combine_options($user_options);
         # update the combined options hash in the Options object
-        $_ghcn_opt_obj->opt_href = $opt_href;
+        $_ghcn_opt_obj->opt_href = $_opt_href;
         # update the combined options object in the Options object
-        $_ghcn_opt_obj->opt_obj = $opt_obj;
+        $_ghcn_opt_obj->opt_obj = $_opt_obj;
         # save the combined option object in a file-scoped lexical for use throughout this code
-        $Opt = $opt_obj;
+        $Opt = $_opt_obj;
     }
 
     if ( $arg{'config_file'} ) {
         $valid{'config_file'}++;
         # if a config file is provided, turn it into an absolute path
-        $config_file = path($arg{'config_file'})->absolute->stringify;
-        $config_href = _get_config_options($config_file);
+        $_profile_file = path($arg{'config_file'})->absolute->stringify;
+        $_profile_href = _get_profile_options($_profile_file);
         # update the config options hash in the Options object
-        $_ghcn_opt_obj->config_href = $config_href;
+        $_ghcn_opt_obj->config_href = $_profile_href;
     }
 
     if ( $arg{'config_options'} ) {
@@ -1330,20 +1340,10 @@ method set_options (%arg) {
             if $valid{'config_file'};
         $_ghcn_opt_obj //= Weather::GHCN::Options->new();
         $config_options = $arg{'config_options'};
-        $config_href    = $arg{'config_options'};
+        $_profile_href    = $arg{'config_options'};
         # update the config options hash in the Options object
-        $_ghcn_opt_obj->config_href = $config_href;
+        $_ghcn_opt_obj->config_href = $_profile_href;
 
-    }
-
-    if ( $arg{'stnid_filter'} ) {
-        $valid{'stnid_filter'}++;
-        $_stnid_filter   = $arg{'stnid_filter'} // {};
-    }
-
-    if ( $arg{'return_list'} ) {
-        $valid{'return_list'}++;
-        $_return_list = $arg{'return_list'};
     }
 
     foreach my $kw (keys %arg) {
@@ -1351,12 +1351,12 @@ method set_options (%arg) {
             unless exists $valid{$kw};
     }
 
-    $_measures_obj = Weather::GHCN::Measures->new($opt_href)
+    $_measures_obj = Weather::GHCN::Measures->new($_opt_href)
         if $user_options;
 
     my @errors = $_ghcn_opt_obj->validate();
 
-    return ($opt_obj, @errors);
+    return ($_opt_obj, @errors);
 }
 
 =head2 summarize_data ()
@@ -1818,7 +1818,7 @@ method _load_daily_data ($stn, $stn_content) {
 
 method _load_station_inventories () {
 
-    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, $cache, 'URI::Fetch_inv');
+    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, $_cache, 'URI::Fetch_inv');
 
     # Now scan the station inventory list, to get the active range for each station
     # - note there are multiple records, one for each element and active range combo
@@ -1940,7 +1940,7 @@ method _report_gaps ($stn, $gaps_href) {
             my $iter = $gap_nrs->iterate_runs();
             while (my ( $from, $to ) = $iter->()) {
                 foreach my $yyyy ($from .. $to) {
-                    $missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
+                    $_missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
                 }
             }
         }
@@ -1958,7 +1958,7 @@ method _report_gaps ($stn, $gaps_href) {
             my $iter = $gap_nrs->iterate_runs();
             while (my ( $from, $to ) = $iter->()) {
                 foreach my $yyyy ($from .. $to) {
-                    $missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
+                    $_missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
                 }
             }
         }
@@ -1991,7 +1991,7 @@ method _report_gaps ($stn, $gaps_href) {
             my $gap_months = join $SPACE, _month_names($month_gap_nrs->as_array);
             my $msg = sprintf "%s\tmissing data: year %d months %s", $stn->id, $yyyy, $gap_months;
             $stn->add_note($WARN_MISS_MO, $msg, $Opt->verbose);
-            $missing_href->{$stn->id}{$yyyy}{$gap_months}++;
+            $_missing_href->{$stn->id}{$yyyy}{$gap_months}++;
         }
 
         my $opt_fday_nrs   = rng_new($Opt->fday);
@@ -2036,7 +2036,7 @@ method _report_gaps ($stn, $gaps_href) {
             my $msg = sprintf "%s\tmissing data: %d days %s", $stn->id, $yyyy, $gap_text;
             $stn->add_note($WARN_MISS_DY, $msg, $Opt->verbose);
             $gap_text =~ s{\A \s+ }{}xms;
-            $missing_href->{$stn->id}{$yyyy}{$gap_text}++;
+            $_missing_href->{$stn->id}{$yyyy}{$gap_text}++;
         }
     }
 
@@ -2049,7 +2049,7 @@ method _report_gaps ($stn, $gaps_href) {
 # Configuration Helper functions
 #----------------------------------------------------------------------
 
-sub _get_config_options ($config_file=$EMPTY) {
+sub _get_profile_options ($profile=$EMPTY) {
 
     #debug# use DDP;
     #debug# use Log::Dispatch;
@@ -2061,63 +2061,63 @@ sub _get_config_options ($config_file=$EMPTY) {
     #debug#     ]
     #debug# );
 
-    my $config_href = {};
+    my $profile_href = {};
 
     # passing undef will result in an empty config
-    return $config_href if not defined $config_file;
+    return $profile_href if not defined $profile;
 
     #debug# use FindBin;
     #debug# open my $fh, '>>', 'c:/sandbox/log.log' or die;
     #debug# $log->debug( 'program ' . $0                                   );
     #debug# $log->debug( 'caller ' . join(' | ', caller)                   );
-    #debug# $log->debug( 'received config_file:           ' . $config_file );
+    #debug# $log->debug( 'received config_file:           ' . $_profile );
 
-    my $config_filespec = _get_config_filespec($config_file);
+    my $profile_filespec = _get_profile_filespec($profile);
 
     my $yaml_struct;
     my $msg = $EMPTY;
 
     # uncoverable branch false
-    if (-e $config_filespec) {
+    if (-e $profile_filespec) {
         # uncoverable branch false
         try {
-            $yaml_struct = YAML::Tiny->read($config_filespec);
+            $yaml_struct = YAML::Tiny->read($profile_filespec);
         } catch {
-            $msg = '*W* no cache or aliases: failed reading YAML in ' . $config_filespec;
+            $msg = '*W* no cache or aliases: failed reading YAML in ' . $profile_filespec;
             carp $msg;
         }
     } else {
-        return $config_href;
+        return $profile_href;
     }
 
-    $config_href = $yaml_struct->[0]
+    $profile_href = $yaml_struct->[0]
         if $yaml_struct;
 
     #debug# $log->( 'yaml_struct length = ' . length $yaml_struct );
     #debug# $log->( "\n" );
-    #debug# $log->( 'config_filespec:                ' . $config_filespec );
+    #debug# $log->( 'config_filespec:                ' . $profile_filespec );
     #debug# $log->( 'carp ' . $msg );
     #debug# $log->( 'FindBin::Bin                    ' . $FindBin::Bin );
     #debug# $log->( "\n");
-    #debug# $log->( 'config_href ' . np($config_href) );
+    #debug# $log->( 'config_href ' . np($profile_href) );
     #debug# $log->( "\n" );
     #debug# $log->( "================" );
     #debug# $log->( "\n" );
     #debug# close $fh;
 
-    return $config_href;
+    return $profile_href;
 }
 
-sub _get_config_filespec ($config_file) {
+sub _get_profile_filespec ($profile) {
 
     # an EMPTY arg will default to ~/.ghcn_fetch.yaml
-    $config_file ||= $CONFIG_FILE;
+    $profile ||= $DEFAULT_PROFILE_FILE;
 
     # Path::Tiny::path will replace ~ or ~username with the corresponding path
-    my $config_filespec = path($config_file);
-    #debug# say {$fh} 'config_filespec (canon):        ', $config_filespec;
+    my $profile_filespec = path($profile);
+    #debug# say {$fh} 'profile_filespec (canon):        ', $profile_filespec;
 
-    return $config_filespec;
+    return $profile_filespec;
 }
 
 #----------------------------------------------------------------------

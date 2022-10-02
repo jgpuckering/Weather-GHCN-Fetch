@@ -247,8 +247,8 @@ sub run ($progname, $argv_aref) {
     ($Opt, @errors) = $ghcn->set_options(
                     user_options    => $user_opt_href,
                     config_file     => $config_file,
-                    stnid_filter    => \%stnid_filter,
                 );
+
 
     die join qq(\n), @errors, qq(\n)
         if @errors;
@@ -275,6 +275,8 @@ sub run ($progname, $argv_aref) {
         die "*E* no station id's found in the input"
             unless $ii;
     }
+
+    $ghcn->stnid_filter_href(\%stnid_filter);
 
     $ghcn->load_stations;
 
@@ -354,7 +356,7 @@ sub run ($progname, $argv_aref) {
     say $TAB, $PROGRAM_NAME;
     say "\tWeather::GHCN::StationTable version " . $Weather::GHCN::StationTable::VERSION;
     say $TAB, 'Cache directory: ' . $ghcn->cache->cachedir;
-    say $TAB, 'Config file: ' . $ghcn->config_file;
+    say $TAB, 'Config file: ' . $ghcn->profile_file;
 
     if ( $Opt->performance ) {
         say $EMPTY;

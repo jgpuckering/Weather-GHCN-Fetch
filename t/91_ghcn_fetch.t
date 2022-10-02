@@ -11,9 +11,9 @@ use Module::Load::Conditional qw(check_install);
 
 use Weather::GHCN::App::Fetch;
 
-my $config_file = $FindBin::Bin . '/ghcn_fetch.yaml';
+my $profile = $FindBin::Bin . '/ghcn_fetch.yaml';
 
-die if not -r $config_file;
+BAIL_OUT if not -r $profile;
 
 my @args = (
         '-country',     'US',
@@ -22,7 +22,7 @@ my @args = (
         '-active',      '1900-1910',
         '-report',      '',
         '-refresh',     'never',
-        '-config',      $config_file,
+        '-profile',     $profile,
 );
 
 my ($stdout, $stderr) = capture {   
