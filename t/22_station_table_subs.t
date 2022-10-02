@@ -84,13 +84,15 @@ subtest 'date functions' => sub {
     is _days_in_month(2019,12), 31, '_days_in_month 2019-12';
     is _days_in_month(2020, 2), 29, '_days_in_month 2020-02';
 
-    is _is_leap_year(1889), 0, '_is_leap_year 1889';
-    is _is_leap_year(1900), 0, '_is_leap_year 1900';
-    is _is_leap_year(1901), 0, '_is_leap_year 1901';
-    is _is_leap_year(1904), 1, '_is_leap_year 1904';
-    is _is_leap_year(2000), 1, '_is_leap_year 2000';
-    is _is_leap_year(2004), 1, '_is_leap_year 2004';
-    is _is_leap_year(2005), 0, '_is_leap_year 2005';
+    is _is_leap_year(1600), 1, '_is_leap_year 1600 is';
+    is _is_leap_year(1889), 0, '_is_leap_year 1889 isnt';
+    is _is_leap_year(1900), 0, '_is_leap_year 1900 isnt';
+    is _is_leap_year(1901), 0, '_is_leap_year 1901 isnt';
+    is _is_leap_year(1904), 1, '_is_leap_year 1904 is';
+    is _is_leap_year(2000), 1, '_is_leap_year 2000 is';
+    is _is_leap_year(2004), 1, '_is_leap_year 2004 is';
+    is _is_leap_year(2005), 0, '_is_leap_year 2005 isnt';
+    is _is_leap_year(2100), 0, '_is_leap_year 2100 isnt';
 
     is _seasonal_qtr(2018,11), 'Q4', '_seasonal_qtr 2018-11';
     is _seasonal_qtr(2018,12), 'Q1', '_seasonal_qtr 2018-12';

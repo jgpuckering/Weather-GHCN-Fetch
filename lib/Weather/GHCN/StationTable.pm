@@ -69,7 +69,6 @@ our $VERSION = 'v0.0.000';
 use Carp                qw( carp croak );
 use Const::Fast;
 use HTML::Entities;
-use DateTime;
 use Devel::Size;
 use FindBin;
 use Math::Trig;
@@ -1965,8 +1964,8 @@ method _report_gaps ($stn, $gaps_href) {
         }
     }
 
-    my $today = DateTime->today;
-    my ($this_yyyy, $this_mm) = ($today->year, $today->month);
+    my (undef, undef, undef , $mday, $mon, $year) = localtime(time);
+    my ($this_yyyy, $this_mm) = ($year+1900, $mon+1);
 
     foreach my $yyyy ( @years ) {
         # don't report gaps for years that aren't within -range (or -baseline if -anomalies)
@@ -2324,11 +2323,19 @@ sub _ddivide ($x, $y) {
 #----------------------------------------------------------------------
 
 sub _days_in_month ($year, $month) {
-    my $dt = DateTime->last_day_of_month( 
-        year => $year+0, 
-        month => $month+0
-    );
-    return $dt->day;
+
+    # coerce to numbers
+    $year += 0;
+    $month += 0;
+
+    ## no critic [ProhibitMagicNumbers]
+    my @mdays = (0, 31,28,31,30,31,30,31,31,30,31,30,31);
+
+    if ($month == 2) {
+        return $mdays[$month] + _is_leap_year($year);
+    }
+
+    return $mdays[$month];
 }
 
 sub _days_in_year ($year) {
@@ -2337,10 +2344,19 @@ sub _days_in_year ($year) {
 }
 
 sub _is_leap_year ($year) {
-    return DateTime->new( year => $year+0 )->is_leap_year;
+
+    $year += 0; # coerce to number
+
+    ## no critic [ProhibitMagicNumbers]
+    return 0 if $year % 4;
+    return 1 if $year % 100;
+    return 0 if $year % 400;
+    return 1;
 }
 
 sub _month_names (@mm) {
+
+    my @mnames = qw(xxx Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 
     my @result = ();
     return (@result) unless @mm;
@@ -2351,9 +2367,7 @@ sub _month_names (@mm) {
             push @result, '???';
         }
         elsif ($mm > 0 and $mm < 13) {
-            # note: year and day are irrelevant, we just need something valid
-            my $dt = DateTime->new(year=>2000, month=>$mm+0, day=>1);
-            push @result, $dt->month_abbr;
+            push @result, $mnames[$mm];
         }
         else {
             push @result, '???';
