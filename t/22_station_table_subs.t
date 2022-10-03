@@ -118,14 +118,14 @@ subtest '_get_profile_options' => sub {
     my $href;
     my @got_keys;
     my @expected_keys;
-    
+
     if ( _get_profile_filespec('') ) {
         $href = _get_profile_options("");
-        is ref $href, 'HASH', '_get_profile_options("") loaded a default config';
+        is ref $href, 'HASH', '_get_profile_options("") loaded a default profile';
     } else {
-        ok 1, 'no default config file found';
+        ok 1, 'no default profile file found';
     }
-    
+
 
     my $fname = $FindBin::Bin . '/ghcn_fetch.yaml';
     $href = _get_profile_options($fname);
@@ -150,7 +150,7 @@ subtest '_get_kml_color' => sub {
 
 subtest '_match_location' => sub {
     my ($stn_id, $stn_name, $pattern);
-    
+
     ($stn_id, $stn_name, $pattern) = ('CA006105887', 'irrelevant', 'CA006105887');
     is _match_location($stn_id, $stn_name, $pattern), $TRUE, '_match_location: stn_id matched';
 
@@ -178,7 +178,7 @@ subtest '_parse_missing_text' => sub {
     my %got;
     my $months_aref;
     my $mmdd_aref;
-    
+
     my $_month_names = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct';
     ($months_aref, $mmdd_aref) = _parse_missing_text($_month_names);
 
@@ -186,7 +186,7 @@ subtest '_parse_missing_text' => sub {
     is_deeply $mmdd_aref,   [],      '_parse_missing_text: month names Jan-Oct - 2nd retval';
 
     my $day_ranges = 'May[2] Oct[3,11] Nov[1] Dec[2,5]';
-    
+
     ($months_aref, $mmdd_aref) = _parse_missing_text($day_ranges);
 
     my $expected = [
@@ -211,10 +211,10 @@ subtest '_month_names' => sub {
     is _month_names('alpha'), '???', '_month_names for invalid mm - string "alpha"';
     is _month_names(0), '???', '_month_names for invalid mm - zero (0)';
     is _month_names(13), '???', '_month_names for invalid mm - thirteen (13)';
-    
+
     @mm = ();
     is scalar _month_names(@mm), 0, '_month_names() returns ()';
-    
+
 };
 
 subtest '_memsize' => sub {
@@ -230,7 +230,7 @@ subtest '_qflags_as_string' => sub {
         I => 1,
         S => 5,
     };
-    
+
     my $s = _qflags_as_string( $qflags_href );
     is $s, 'I:1, N:9, S:5', '_qflags_as_string with hashref';
 

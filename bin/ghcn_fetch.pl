@@ -51,11 +51,13 @@ ghcn_fetch.pl - Fetch station and weather data from the NOAA GHCN repository
             [-fmonth <str>] [-fday <str>]
             [-anomalies] [-baseline <str>] [-precip] [-tavg] [-nogaps]
             [-kml <filespec> [-color <str>] ]
-            [-dataonly] [-refresh <str>] [-performance] [-verbose]
-            [-outclip]
             [-report <report_type>]
+            [-dataonly] [-performance] [-verbose] [-outclip|-o]
+            [-cachedir <directory>] [-refresh <str>] 
+            [-profile <filespec>] 
+            
 
-        <report_type> ::= id | daily | monthly | weekly | ""
+        <report_type> ::= detail | daily | monthly | weekly | ""
 
     ghcn_fetch.pl -readme
 
@@ -79,9 +81,11 @@ followed by the station list.
 If report type 'detail' is given, then the daily data for each selected
 station id is reported, followed by the station list.
 
-The report type can be abbreviated; e.g. d or da for daily.  The report
-type can be provided as the first argument, or it can be provided via
-the -report option anywhere within the argument list.
+The report type can be abbreviated so long as it is unambiguous; e.g. 
+da or dai for daily; de for detail.  
+
+The report type can be provided as the first argument, or it can be 
+provided via the -report option anywhere within the argument list.
 
 In general it's best to narrow your filter criteria as much as
 possible otherwise it will take a very long time to load and process
@@ -103,11 +107,12 @@ names may be abbreviated, so long as they remains unambiguous.
 
 =head2 Report Types
 
-
 Data obtained from the GHCN database can be reported at various
-levels of aggregation using the -report option.  The string value
-given to -report specifies the type and level of aggregation.
-Abbrevations are permitted.
+levels of aggregation using the B<report> option.  The string value
+for B<report> specifies the type and level of aggregation.
+Abbrevations are permitted.  This value can be given as the very
+first argument on the command line, or anywhere on the command line
+if preceded by B<-report>.
 
 =over 4
 
@@ -325,24 +330,31 @@ down to one letter. Default is red.
 
 =back
 
-=head2 Output Options
-
-=over 4
-
-=item -outclip or -o
-
-Send output to the Windows clipboard.  (Windows only)
-
-=back
-
 =head2 Misc Options
 
 =over 4
+
+=item -cachedir <filespec>
+
+This section defines the location of the cache directory where pages 
+fetched from the NOAA GHCN repository will be saved, in accordance 
+with your -refresh option. Using a cache vastly improves the 
+performance of subsequent invocations of B<ghcn_fetch>, especially when 
+using the same station filtering criteria.
 
 =item -dataonly
 
 Print only the data table.  Other information, including notes, lists
 of stations kept and rejected, and statistics are suppressed.
+
+=item -performance
+
+Include performance statistics in the output.  This includes some
+extra timing information (labelled "(internal)" in the Time
+Statistics list because they are internal to the other timing
+metrics) as well as statistics for the memory consumption of the
+Data hash table.  Also some memory statistics are added to some
+Timing subjects.
 
 =item -refresh <str>
 
@@ -381,15 +393,6 @@ Otherwise the server is checked for a fresher page.
 
 =back
 
-=item -performance
-
-Include performance statistics in the output.  This includes some
-extra timing information (labelled "(internal)" in the Time
-Statistics list because they are internal to the other timing
-metrics) as well as statistics for the memory consumption of the
-Data hash table.  Also some memory statistics are added to some
-Timing subjects.
-
 =item -verbose
 
 When given, warning messages about missing data are displayed to
@@ -410,6 +413,10 @@ Not available unless modules Tk and Tk::Getopt are installed.
 
 Designate a file to be used to save or load options.
 
+=item -outclip or -o
+
+Send output to the Windows clipboard.  (Windows only)
+
 =item -readme
 
 Launch the default web browser and display the NOAA Daily Readme.txt
@@ -426,7 +433,7 @@ Display the Synopsis section of this documentation.
 
 =back
 
-=head1 CONFIGURATION FILE
+=head1 PROFILE FILE
 
 At startup, ghcn_fetch will look for the file .ghcn_fetch.yaml in
 the user home directory (~ on Unix, %UserProfile% on Windows)
@@ -434,35 +441,25 @@ in order to capture some additional options. The file content should
 contain something like this:
 
     ---
-    cache:
-        root: C:/ghcn_cache
+    cachedir: C:/ghcn_cache
 
     aliases:
         yow: CA006106000,CA006106001    # Ottawa airport
         cda: CA006105976,CA006105978    # Ottawa CDA and CDA RCS
         center: USC00326365             # geographic center of North America
 
-Supported options are:
+Any option (except those listed in section Command-Line Only Options)
+can be included and will be preloaded as a default.  Command-line
+options will override them.  Anything left undefined will be filled in
+by built-in defaults.
 
-=over 4
-
-=item cache:
-
-This section defines the cache_root options for GHCN::CacheURI.
-If present, then any pages which are fetched from the NOAA GHCN repository
-are cached in the folder designated by root.
-This vastly improves the performance of subsequent invocations of
-ghcn_fetch, especially when using the same station filtering criteria.
-
-=item aliases:
-
-This section provides a list of shortcut names that are mapped to
-station id's or id-lists and which can be used in the -location
-option.  If a -location value matches a key in this section, the
-station id or id-list is substituted.  Note that keys must be lowercase
-letter only, with or without a leading underscore.
-
-=back
+One extra option not available via the command line but which can be 
+specified in the profile file is B<aliases>.  This optional section 
+provides a list of shortcut names that are mapped to station id's or 
+id-lists and which can be used in the -location option.  If a 
+-location value matches a key defined in this section, the station id 
+or id-list is substituted.  Note that keys must be lowercase letter 
+only, and may have a leading underscore.
 
 =head1 RELATED SCRIPTS
 

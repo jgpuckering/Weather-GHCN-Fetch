@@ -9,12 +9,22 @@ Weather::GHCN::CacheURI - URI page fetch with file-based caching
 
     use Weather::GHCN::CacheURI;
 
-    my $cache_uri = Weather::GHCN::CacheURI->new($cachedir);
+    # put files cached by fetch() in $cachedir and refresh if not changed this year
+    my $cache_uri = Weather::GHCN::CacheURI->new($cachedir, 'yearly');
 
+    $cache_uri->clean_cache;    # empty the cache
+
+    # this will cause fetch to do a network access
     my ($from_cache, $content) = $cache_uri->fetch($uri);
 
-    my $content = $cache_uri->load($uri);
+    # depending on the refresh option, this will either fetch the content
+    # from the cache, or get a fresher copy from the network
+    my ($from_cache, $content) = $cache_uri->fetch($uri);
 
+    # fetch calls these to access the cached file according to the
+    # refresh rule and the state of the cached file and the web page
+
+    my $content = $cache_uri->loca($uri);
     $cache_uri->store($uri, $content);
 
 =head1 DESCRIPTION
@@ -64,121 +74,45 @@ const my $FALSE   => not $TRUE;  # a dual-var consisting of '' and 0
 const my $EMPTY   => q();
 const my $ONE_DAY => 24*60*60;   # number of seconds in a day
 
+const my $REFRESH_RE => qr{ \A ( yearly | never | always | \d+ ) \Z }xms;
+
 # First return value from _fetch methods indicating whether the fetch
 # was from the cache or the web page URI
 const my $FROM_CACHE => $TRUE;
 const my $FROM_URI   => $FALSE;
 
-field $_cachedir;
+field $_cachedir    :reader :param  {};
+field $_refresh     :reader :param  {};
+
+BUILD ($cachedir, $refresh) {
+    $_cachedir //= $cachedir;
+    $_refresh  //= lc $refresh;
+    croak '*E* cache directory does not exist' unless -d $cachedir;
+    croak '*E* invalid refresh option' unless $_refresh =~ $REFRESH_RE;
+}
+
+=head1 FIELDS
+
+=head2 cachedir
+
+Returns the cache location defined when the object was instantiated.
+
+=head2 refresh
+
+Returns the refresh option that was defined when the object was
+instantiated.  See new(),
+
+=cut
 
 =head1 METHODS
 
-=head2 new ($cachedir)
+=head2 new ($cachedir, $refresh)
 
 New instances of this class must be provided a location for the cache
-files upon creation ($cachedir).  This directory will be created as
-needed on the first cache store.
-
-=cut
-
-BUILD ($cachedir) {
-    $_cachedir = $cachedir;
-}
-
-=head2 cachedir ($dir=undef)
-
-Returns the currently defined cache location.  
-
-If given an argument, changes the cache location to that value if
-it is a directory that exists.  Otherwise it throws an exception.
-
-=cut
-
-method cachedir ($dir=undef) {
-    return $_cachedir if not defined $dir;
-    croak "*E* directory $dir doesn't exist"
-        unless -d $dir;
-    $_cachedir = $dir;
-}
-
-=head2 clean_cache
-
-Removes all the files in the cache, but leaves the cache directory.
-Returns a list of errors for any files that couldn't be removed.
-
-=cut
-
-method clean_cache () {
-    my $re = qr{ \A [\w-]+ [.] (txt|dly) \Z }xms;
-    my @files = path($_cachedir)->children( $re );
-    my @errors;
-    foreach my $f (@files) {
-        try {
-            $f->remove;
-        } catch {
-            push @errors, "*E* unable to remove $f: $_";
-        };
-    }
-    return @errors;
-}
-
-=head2 clean_data_cache
-
-Removes all the daily weather data files (*.dly) from the cache, but 
-leaves the cache directory.  Returns a list of errors for any files 
-that couldn't be removed.
-
-=cut
-
-method clean_data_cache () {
-    # delete the daily weather data files in the cache
-    my $re = qr{ \A \w+[.]dly \Z }xms;
-    my @files = path($_cachedir)->children( $re );
-    my @errors;
-    foreach my $f (@files) {
-        try {
-            $f->remove;
-        } catch {
-            push @errors, "*E* unable to remove $f: $_";
-        };
-    }
-    return @errors;
-}
-
-=head2 clean_station_cache
-
-Removes the station list and station inventory files (ghcnd-*.txt) 
-from the cache, but leaves the cache directory. Returns a list of 
-errors for any files that couldn't be removed.
-
-=cut
-
-method clean_station_cache () {
-    # delete the station list and inventory files in the cache
-    my $re = qr{ \A ghcnd-\w+[.]txt \Z }xms;
-    my @files = path($_cachedir)->children( $re );
-    my @errors;
-    foreach my $f (@files) {
-        try {
-            $f->remove;
-        } catch {
-            push @errors, "*E* unable to remove $f: $_";
-        };
-    }
-    return @errors;
-}
-
-=head2 fetch ($uri, $refresh="yearly")
-
-Fetch the web page given by the URI $uri, returning its content
-and caching it.
+files upon creation ($cachedir).  This directory must exist or the
+new() will fail.  Similarly, $refresh must be a valid value, one of:
 
 =over 4
-
-=item $uri
-
-A URI to the location of the web page to be fetched, or retrieved
-from the cache.
 
 =item refresh 'yearly'
 
@@ -210,35 +144,109 @@ and the cached page was inserted within the last <number> days.
 
 =back
 
+=head2 clean_cache
+
+Removes all the files in the cache, but leaves the cache directory.
+Returns a list of errors for any files that couldn't be removed.
+
 =cut
 
-method fetch ($uri, $refresh="yearly") {
-    
+method clean_cache () {
+    my $re = qr{ \A [\w-]+ [.] (txt|dly) \Z }xms;
+    my @files = path($_cachedir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
+}
+
+=head2 clean_data_cache
+
+Removes all the daily weather data files (*.dly) from the cache, but
+leaves the cache directory.  Returns a list of errors for any files
+that couldn't be removed.
+
+=cut
+
+method clean_data_cache () {
+    # delete the daily weather data files in the cache
+    my $re = qr{ \A \w+[.]dly \Z }xms;
+    my @files = path($_cachedir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
+}
+
+=head2 clean_station_cache
+
+Removes the station list and station inventory files (ghcnd-*.txt)
+from the cache, but leaves the cache directory. Returns a list of
+errors for any files that couldn't be removed.
+
+=cut
+
+method clean_station_cache () {
+    # delete the station list and inventory files in the cache
+    my $re = qr{ \A ghcnd-\w+[.]txt \Z }xms;
+    my @files = path($_cachedir)->children( $re );
+    my @errors;
+    foreach my $f (@files) {
+        try {
+            $f->remove;
+        } catch {
+            push @errors, "*E* unable to remove $f: $_";
+        };
+    }
+    return @errors;
+}
+
+=head2 fetch ($uri, $refresh="yearly")
+
+Fetch the web page given by the URI $uri, returning its content
+and caching it.  If a cached entry for it exists, and is current
+according to the refresh option, then the cached entry is returned.
+
+=cut
+
+method fetch ($uri) {
+
     my $from_cache;
     my $content;
 
-    if (not $_cachedir) {
+    carp '*W* no cache directory specified therefore no caching of HTTP queries available'
+        if not $_cachedir;
+
+    carp "*W* cache location specified but doesn't exist, therefore no caching of HTTP queries available"
+        if $_cachedir and not -d $_cachedir;
+
+    if (not $_cachedir or not -d $_cachedir) {
         ($from_cache, $content) = $self->_fetch_without_cache($uri);
         return ($from_cache, $content);
     }
 
-    my $refresh_lc = lc $refresh;
-
-    carp '*W* no cache location therefore no caching of HTTP queries available'
-        if not $_cachedir and $refresh_lc ne 'never';
-
-    if ($refresh_lc eq 'always') {
+    if ($_refresh eq 'always') {
         ($from_cache, $content) = $self->_fetch_refresh_always($uri);
     }
-    elsif ($refresh_lc eq 'never') {
+    elsif ($_refresh eq 'never') {
         ($from_cache, $content) = $self->_fetch_refresh_never($uri);
     }
-    elsif ($refresh_lc eq 'yearly') {
+    elsif ($_refresh eq 'yearly') {
         my $cutoff_mtime = localtime->truncate( to => 'year' );
         ($from_cache, $content) = $self->_fetch_refresh_n_days($uri, $cutoff_mtime);
     } else {
-        croak unless $refresh =~ m{ \A \d+ \Z }xms;
-        my $cutoff_mtime = localtime->truncate( to => 'day') - ( $refresh * $ONE_DAY );
+        croak unless $_refresh =~ m{ \A \d+ \Z }xms;
+        my $cutoff_mtime = localtime->truncate( to => 'day') - ( $_refresh * $ONE_DAY );
         ($from_cache, $content) = $self->_fetch_refresh_n_days($uri, $cutoff_mtime);
     }
 
@@ -247,9 +255,9 @@ method fetch ($uri, $refresh="yearly") {
 
 =head2 load ($uri)
 
-Load a previously fetched and stored $uri from the file cache and 
-returns the content.  Uses Path::Tiny->slurp_utf8, which will lock 
-the file during the operation and which uses a binmode of 
+Load a previously fetched and stored $uri from the file cache and
+returns the content.  Uses Path::Tiny->slurp_utf8, which will lock
+the file during the operation and which uses a binmode of
 :unix:encoding(UTF-8) for platform portability of the files.
 
 =cut
@@ -266,14 +274,14 @@ method load ($uri) {
 
 =head2 store ($uri, $content)
 
-Stores content obtained from a URI using fetch() into a file in the 
-cache.  The filename is derived from the tail end of the URI. 
+Stores content obtained from a URI using fetch() into a file in the
+cache.  The filename is derived from the tail end of the URI.
 
-Uses Path::Tiny->spew_utf8, which writes data to the file atomically. 
-The file is written to a temporary file in the cache directory, then 
-renamed over the original. 
+Uses Path::Tiny->spew_utf8, which writes data to the file atomically.
+The file is written to a temporary file in the cache directory, then
+renamed over the original.
 
-A binmode of :unix:encoding(UTF-8) (i.e. PerlIO::utf8_strict) is 
+A binmode of :unix:encoding(UTF-8) (i.e. PerlIO::utf8_strict) is
 used, unless Unicode::UTF8 0.58+ is installed. In that case, the content
 will be encoded by Unicode::UTF8 and written using spew_raw.
 
@@ -300,7 +308,7 @@ method store ($uri, $content) {
     # delete daily data files older than $mtime
 # }
 
-=item remove ($uri)
+=head2 remove ($uri)
 
 Remove the cache file associated with this URI.
 

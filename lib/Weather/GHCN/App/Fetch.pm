@@ -82,6 +82,7 @@ use Const::Fast;
 use English         qw( -no_match_vars );
 
 # cpan modules
+use Path::Tiny;
 use Text::Abbrev;
 
 # modules for Windows only
@@ -130,7 +131,7 @@ const my $NL     => qq(\n);    # perl universal newline (any platform)
 const my $TRUE   => 1;         # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 
-const my $CONFIG_FILE => '~/.ghcn_fetch.yaml';
+const my $PROFILE_FILE => '~/.ghcn_fetch.yaml';
 
 const my $STN_THRESHOLD     => 100;     # ask if number of selected stations exceeds this
 
@@ -199,7 +200,7 @@ sub run ($progname, $argv_aref) {
     my %script_args = (
         'help'      => \$Opt_help,
         'usage|?'   => \$Opt_usage,
-        'optfile:s' => \$Opt_file,
+        'optfile:s' => \$Opt_file,      # file for options load/save
         'readme'    => \$Opt_readme,
     );
 
@@ -209,6 +210,8 @@ sub run ($progname, $argv_aref) {
     $script_args{'outclip|o'} = \$Opt_outclip
         if $USE_WINCLIP;
 
+    # parse out the script options into $Opt_ fields, letting the rest
+    # pass through to get_user_options below
     GetOptions( %script_args );
 
     if ( $Opt_help ) {
@@ -234,21 +237,15 @@ sub run ($progname, $argv_aref) {
     my $user_opt_href = get_user_options($Opt_file);
 
     $user_opt_href->{report} = $report_type
-        if $report_type;
+        if defined $report_type;
 
-    my $config_file = $user_opt_href->{config} // $CONFIG_FILE;
+    $user_opt_href->{profile} //= $PROFILE_FILE;
 
     die '*E* unrecognized options: ' . join $SPACE, @ARGV
         if @ARGV;
 
-    my %stnid_filter;
-
     my @errors;
-    ($Opt, @errors) = $ghcn->set_options(
-                    user_options    => $user_opt_href,
-                    config_file     => $config_file,
-                );
-
+    ($Opt, @errors) = $ghcn->set_options( $user_opt_href->%* );
 
     die join qq(\n), @errors, qq(\n)
         if @errors;
@@ -264,19 +261,18 @@ sub run ($progname, $argv_aref) {
     # (but not if stdin is pointing to the terminal)
     if ( -p *STDIN || -f *STDIN ) {
         my $ii;
+        $ghcn->stnid_filter_href( {} );
         while (<STDIN>) {
             chomp;
             my @id_list = $_ =~ m{ $STN_ID_RE }xmsg;
             foreach my $id ( @id_list ) {
-                $stnid_filter{$id}++;
+                $ghcn->stnid_filter_href->{$id}++;
                 $ii++;
             }
         }
         die "*E* no station id's found in the input"
             unless $ii;
     }
-
-    $ghcn->stnid_filter_href(\%stnid_filter);
 
     $ghcn->load_stations;
 
@@ -355,8 +351,8 @@ sub run ($progname, $argv_aref) {
     say 'Script:';
     say $TAB, $PROGRAM_NAME;
     say "\tWeather::GHCN::StationTable version " . $Weather::GHCN::StationTable::VERSION;
-    say $TAB, 'Cache directory: ' . $ghcn->cache->cachedir;
-    say $TAB, 'Config file: ' . $ghcn->profile_file;
+    say $TAB, 'Cache directory: ' . $ghcn->cachedir;
+    say $TAB, 'Profile file: ' . $ghcn->profile_file;
 
     if ( $Opt->performance ) {
         say $EMPTY;
@@ -390,7 +386,7 @@ via B<Tk::GetOptions> -- if it is installed -- or via B<Getopt::Long>.
 
 sub get_user_options ( $optfile=undef ) {
 
-    my $user_opt_href = $USE_TK
+    my $user_opt_href = $Opt_gui
                       ? get_user_options_tk($optfile)
                       : get_user_options_no_tk($optfile)
                       ;
@@ -406,13 +402,22 @@ B<Weather::GHCN::Options->get_getopt_list()>.  The options (and their values)
 are extracted from @ARGV and put in a hash, a reference to which is
 then returned.
 
-The $optfile argument is only used by B<get_user_options_no_tk>.
+This function is called when the GUI is not being used.  The $optfile
+argument, if provided, is assumed to be a file saved from a GUI
+invocation and will be eval'd and used as the options list.
 
 =cut
 
 sub get_user_options_no_tk ( $optfile=undef ) {
 
     my @options = ( Weather::GHCN::Options->get_getopt_list() );
+
+    if ($optfile) {
+        my $saved_opt_perlsrc = join $SPACE, path($optfile)->lines( {chomp=>1} );
+        my $loadoptions;
+        eval $saved_opt_perlsrc;
+        return $loadoptions;
+    }
 
     my %opt;
     GetOptions( \%opt, @options);
@@ -450,7 +455,7 @@ sub get_user_options_tk ( $optfile=undef ) {
 
     $optobj->set_defaults;     # set default values
 
-    $optobj->load_options      # configuration file
+    $optobj->load_options      # Tk:Getopt configuration file
         if defined $optfile and -e $optfile;
 
     $optobj->get_options;      # command line
@@ -517,7 +522,8 @@ sub valid_report_type ($rt, $opttable_aref) {
 
 The report types supported by the -report option can be abbrevated,
 so long as the abbrevation is unambiquous.  For example, 'daily' can
-be abbreviated to 'dail', 'dai', 'da', or even 'd'.
+be abbreviated to 'dail', 'dai', or 'da', but not 'd' because 'detail'
+is also a valid report type and 'd' would not disambiguate the two.
 
 This function takes a (possibly abbreviated) report type and returns
 an unabbreviated report type.
@@ -525,7 +531,7 @@ an unabbreviated report type.
 =cut
 
 sub deabbrev_report_type ($rt) {
-        my %r_abbrev = abbrev( qw(id daily monthly yearly) );
+        my %r_abbrev = abbrev( qw(detail daily monthly yearly) );
         my $deabbreved = $r_abbrev{ lc $rt };
         return $deabbreved;
 }

@@ -169,19 +169,20 @@ field $_baseline_href    { {} } ;    # [9] hashref of baseline data
 # readable fields that are populated by set_options
 field $_opt_obj             :reader; # [10] $ghcn_opt_obj->opt_obj (a Hash::Wrap of $ghcn_opt_obj->opt_href)
 field $_opt_href            :reader; # [11] $ghcn_opt_obj->opt_href
-field $_cache               :reader; # [12] cache object
-field $_profile_file        :reader; # [13]
-field $_profile_href        :reader; # [14] hash reference containing cache and alias options
+field $_cache_obj           :reader; # [12] cache object
+field $_cachedir            :reader; # [13] cache directory
+field $_profile_file        :reader; # [14]
+field $_profile_href        :reader; # [15] hash reference containing cache and alias options
 
 # other fields with read methods
-field $_stn_count            :reader;         # [15]
-field $_stn_selected_count   :reader;         # [16]
-field $_stn_filtered_count   :reader;         # [17]
-field $_missing_href         :reader  { {} }; # [18]
+field $_stn_count            :reader;         # [16]
+field $_stn_selected_count   :reader;         # [17]
+field $_stn_filtered_count   :reader;         # [18]
+field $_missing_href         :reader  { {} }; # [19]
 
 # fields for API use that are readable and writable
-field $_stnid_filter_href   :accessor;       # [19] hashref of station id's to be loaded, or empty hash
-field $_return_list         :accessor;       # [20] return method results as tsv if true, a list if false
+field $_stnid_filter_href   :accessor;       # [20] hashref of station id's to be loaded, or empty hash
+field $_return_list         :accessor;       # [21] return method results as tsv if true, a list if false
 
 =head1 FIELDS (read-only)
 
@@ -195,14 +196,14 @@ Returns a reference to the Options object created by set_options.
 
 Returns a reference to a hash of the Options created by set_options.
 
-=item config_file
+=item profile_file
 
-Returns the name of the configuration file, if one was passed to
+Returns the name of the profile file, if one was passed to
 set_options.
 
-=item config_href
+=item profile_href
 
-Returns a reference to a hash containing the configuration options
+Returns a reference to a hash containing the profile options
 set by set_options (if any).
 
 =item stn_count
@@ -233,16 +234,16 @@ data.
 
 =item return_list(<bool>)
 
-For API use.  By default, get methods return a tab-separated string 
-of results. If return_list is set to a perl true value, then these 
-methods will return a list (or list of lists).  If no argument is 
+For API use.  By default, get methods return a tab-separated string
+of results. If return_list is set to a perl true value, then these
+methods will return a list (or list of lists).  If no argument is
 given, the current value of return_list is returned.
 
 =item stnid_filter_href(\%stnid_filter)
 
-For API use.  With no argument, the current value is returned. If an 
-argument is given, it must be a hash reference the keys of which are 
-the specific station id's you want to fetch and process. When this is 
+For API use.  With no argument, the current value is returned. If an
+argument is given, it must be a hash reference the keys of which are
+the specific station id's you want to fetch and process. When this is
 used, many filtering options set via set_options will be overridden;
 e.g. country, state, location etc.
 
@@ -1027,7 +1028,7 @@ method load_data ( %args ) {
     my $ii = 0;
     foreach my $stn ( @station_objs ) {
         my $daily_url = $GHCN_DATA . $stn->id . '.dly';
-        my $content = $self->_fetch_url($daily_url, $_cache, 'URI::Fetch_daily');
+        my $content = $self->_fetch_url($daily_url, 'URI::Fetch_daily');
 
         if ($progress_callback) {
             no strict 'refs';  ## no critic [ProhibitNoStrict]
@@ -1111,17 +1112,7 @@ cos-surface-network-gsn-program-overview>
 
 method load_stations () {
 
-    # get the caching configuration and use it to create a cache for URI::Fetch
-    # if no cache config, then $_cache will be undef and fetches will be uncached
-
-    if ($_profile_href and $_profile_href->{'cachedir'} ) {
-        my $cachedir_abs = path( $_profile_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
-        $_cache = Weather::GHCN::CacheURI->new($cachedir_abs);
-    } else {
-        $_cache = Weather::GHCN::CacheURI->new($EMPTY);
-    }
-
-    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, $_cache, 'URI::Fetch_stn');
+    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, 'URI::Fetch_stn');
 
     if ( $stations_content =~ m{<title>(.*?)</title>}xms ) {
         croak '*E* unable to fetch data from ' . $GHCN_STN_LIST_URL . ': ' . $1;
@@ -1226,8 +1217,8 @@ Set various options for this StationTable instance.  These options
 will affect the processing and output by subsequent method calls.
 
 Returns an Option object and a list of errors.  It is advised you
-check @errors after calling set_options cease processing; e.g.
-I<die @errors if @errors>.
+check @errors after calling set_options to report the errors and to
+cease processing if there are any; e.g. I<die @errors if @errors>.
 
 You may want to set up a file-scoped lexical variable to hold the
 options object.  That way it is accessible throughout your code.
@@ -1246,50 +1237,6 @@ The typical calling pattern would look like this:
 
 =over 4
 
-=item user_options => \%user_options
-
-This optional argument provides a reference to a hash
-that contains a set of options that will control the filtering,
-processing and output of the GHCN modules.  This hash is typically
-created by the caller using Getopt::Long.
-
-The options provided can be any subset of the supported options.  Any
-option not provided will be added with an appropriate default value.
-The resulting combined option collection will be available as both as
-hash reference in the instance, and as a Hash::Wrap object reference
-in the instance via methods.
-
-If empty or undef, a list of all stations in the GHCN database will
-be generated, so it's best to at least provide some country or
-station id filtering, and absolutely necessary in order to produce
-other output such as daily or monthly weather data (by specifying
--report).
-
-See USER OPTIONS for a list of the options available.
-
-=item config_file => $config_filespec
-
-This optional argument specifies a file which will be used to set
-the configuration options.  The file must contain YAML specifications
-that describe the hash structure defined in section CONFIGURATION
-OPTIONS.
-
-This option is an alternative to config_options.  (If both options
-are specifed, then config_options  will take precedence.)
-
-If config_filespec is an empty string, then the filespec will default
-to ~\.ghcn_fetch.yaml (%UserProfile% on Windows).
-
-If config_filespec is undef, then an empty configuration will be
-used; i.e. there will be no cache and no aliases.
-
-=item config_options => \%config_options
-
-This optional argument is a reference to a hash containing
-configuration options as described in section CONFIGURATION OPTION.
-Alternatively, config_file can be used to specify a file containing
-the configuation specification in YAML format.
-
 =item timing_stats => $TimingStats_obj
 
 This optional argument should point to a TimingStats object that was
@@ -1305,56 +1252,53 @@ memory statistics.
 
 =cut
 
-method set_options (%arg) {
-    my $user_options;
-    my $config_options;
+method set_options (%user_options) {
 
-    my %valid;
-
-    if ( $arg{'user_options'} ) {
-        $valid{'user_options'}++;
-        $_ghcn_opt_obj //= Weather::GHCN::Options->new();
-        $user_options = $arg{'user_options'};
-        # combine user-specified options with the defaults
-        ($_opt_href, $_opt_obj) = $_ghcn_opt_obj->combine_options($user_options);
-        # update the combined options hash in the Options object
-        $_ghcn_opt_obj->opt_href = $_opt_href;
-        # update the combined options object in the Options object
-        $_ghcn_opt_obj->opt_obj = $_opt_obj;
-        # save the combined option object in a file-scoped lexical for use throughout this code
-        $Opt = $_opt_obj;
-    }
-
-    if ( $arg{'config_file'} ) {
-        $valid{'config_file'}++;
-        # if a config file is provided, turn it into an absolute path
-        $_profile_file = path($arg{'config_file'})->absolute->stringify;
+    if ( defined $user_options{'profile'} ) {
+        # save the expanded profile file path in the object
+        $_profile_file = path( $user_options{'profile'} )->absolute( $FindBin::Bin )->stringify;
         $_profile_href = _get_profile_options($_profile_file);
-        # update the config options hash in the Options object
-        $_ghcn_opt_obj->config_href = $_profile_href;
     }
 
-    if ( $arg{'config_options'} ) {
-        $valid{'config_options'}++;
-        carp '*W* set_options: config_options override config_file'
-            if $valid{'config_file'};
-        $_ghcn_opt_obj //= Weather::GHCN::Options->new();
-        $config_options = $arg{'config_options'};
-        $_profile_href    = $arg{'config_options'};
-        # update the config options hash in the Options object
-        $_ghcn_opt_obj->config_href = $_profile_href;
+    $_ghcn_opt_obj //= Weather::GHCN::Options->new();
+    # combine user-specified options with the defaults
+    ($_opt_href, $_opt_obj) = $_ghcn_opt_obj->combine_options(\%user_options, $_profile_href);
 
+    if ( $_opt_href->{'cachedir'} ) {
+        $_cachedir = path( $_opt_href->{'cachedir'} )->absolute( $FindBin::Bin )->stringify;
+
+        $_cache_obj = Weather::GHCN::CacheURI->new($_cachedir, $_opt_obj->refresh);
+    } else {
+        $_cache_obj = Weather::GHCN::CacheURI->new($EMPTY, $_opt_obj->refresh);
     }
 
-    foreach my $kw (keys %arg) {
-        croak '*E* set_options unrecognized argument: ' . $kw
-            unless exists $valid{$kw};
-    }
-
-    $_measures_obj = Weather::GHCN::Measures->new($_opt_href)
-        if $user_options;
 
     my @errors = $_ghcn_opt_obj->validate();
+
+    if ( defined $_opt_href->{'aliases'} and defined $_opt_href->{'location'} ) {
+        # if the location matches an aliases, then pull the list of
+        # stations from the alias definition and assign it to the
+        # $_stnid_filter
+        my $stnid_string = $_opt_href->{'aliases'}->{ $_opt_href->{'location'} } // $EMPTY;
+        if ($stnid_string) {
+            my @stns = split m{ [,;\s] }xms, $stnid_string;
+            my %stnid_filter;
+            foreach my $stnid (@stns) {
+                $stnid_filter{$stnid} = $TRUE;
+            }
+            $_stnid_filter_href = \%stnid_filter;
+            $_opt_href->{'location'} = undef;
+        }
+    }
+
+    # update the combined options hash in the Options object
+    $_ghcn_opt_obj->opt_href = $_opt_href;
+    # update the combined options object in the Options object
+    $_ghcn_opt_obj->opt_obj = $_opt_obj;
+    # save the combined option object in a file-scoped lexical for use throughout this code
+    $Opt = $_opt_obj;
+
+    $_measures_obj = Weather::GHCN::Measures->new($_opt_href);
 
     return ($_opt_obj, @errors);
 }
@@ -1623,12 +1567,14 @@ method _compute_quality ($stn, $context_msg, $day_count, $range, $quality) {
     return $insufficient_quality;
 }
 
-method _fetch_url ($url, $my_cache, $timer_label=$EMPTY) {
+method _fetch_url ($url, $timer_label=$EMPTY) {
 
     $_tstats->start($timer_label) if $timer_label;
 
-    my ($from_cache, $content) = $my_cache->fetch($url, $Opt->refresh);
+    my ($from_cache, $content) = $_cache_obj->fetch($url);
 
+    carp '*I* cache refresh is set to ' . $_cache_obj->refresh
+        unless $content;
     croak '*E* unable to fetch data from ' . $url
         unless $content;
 
@@ -1818,7 +1764,7 @@ method _load_daily_data ($stn, $stn_content) {
 
 method _load_station_inventories () {
 
-    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, $_cache, 'URI::Fetch_inv');
+    my $inv_content = $self->_fetch_url($GHCN_STN_INVEN_URL, 'URI::Fetch_inv');
 
     # Now scan the station inventory list, to get the active range for each station
     # - note there are multiple records, one for each element and active range combo
@@ -2070,7 +2016,7 @@ sub _get_profile_options ($profile=$EMPTY) {
     #debug# open my $fh, '>>', 'c:/sandbox/log.log' or die;
     #debug# $log->debug( 'program ' . $0                                   );
     #debug# $log->debug( 'caller ' . join(' | ', caller)                   );
-    #debug# $log->debug( 'received config_file:           ' . $_profile );
+    #debug# $log->debug( 'received profile_file:           ' . $_profile );
 
     my $profile_filespec = _get_profile_filespec($profile);
 
@@ -2095,11 +2041,11 @@ sub _get_profile_options ($profile=$EMPTY) {
 
     #debug# $log->( 'yaml_struct length = ' . length $yaml_struct );
     #debug# $log->( "\n" );
-    #debug# $log->( 'config_filespec:                ' . $profile_filespec );
+    #debug# $log->( 'profile_filespec:                ' . $profile_filespec );
     #debug# $log->( 'carp ' . $msg );
     #debug# $log->( 'FindBin::Bin                    ' . $FindBin::Bin );
     #debug# $log->( "\n");
-    #debug# $log->( 'config_href ' . np($profile_href) );
+    #debug# $log->( 'profile_href ' . np($profile_href) );
     #debug# $log->( "\n" );
     #debug# $log->( "================" );
     #debug# $log->( "\n" );
@@ -2167,7 +2113,7 @@ sub _get_kml_color ($color_opt) {
 # -gps Helper Functions
 #----------------------------------------------------------------------
 
-# Calculate geographic distances in kilometers between coordinates in 
+# Calculate geographic distances in kilometers between coordinates in
 # geodetic WGS84 format using the Haversine formula.
 
 sub _gis_distance ($lat1, $lon1, $lat2, $lon2) {
@@ -2422,17 +2368,13 @@ sub _memsize ( $ref, $opt_performance ) {
   my $ghcn = Weather::GHCN::StationTable->new;
 
   my ($opt, @errors) = $ghcn->set_options(
-    user_options => {
-        country     => 'US',
-        state       => 'NY',
-        location    => 'New York',
-        active      => '2000-2022',
-        report      => 'yearly',
-        nonetwork   => -1,      # refresh cache if stale this year
-    },
-    config_options => {
-        cachedir => 'c:/ghcn_cache',
-    },
+    cachedir    => 'c:/ghcn_cache',
+    refresh     => 'always',
+    country     => 'US',
+    state       => 'NY',
+    location    => 'New York',
+    active      => '2000-2022',
+    report      => 'yearly',
   );
 
   die @errors if @errors;
@@ -2488,31 +2430,26 @@ sub _memsize ( $ref, $opt_performance ) {
 
   $ghcn->export_kml if $opt->kml;
 
-=head1 CONFIGURATION OPTIONS
+=head1 OPTIONS
 
-StationTable supports two kinds of options:  user and configuration.
-The main difference between the two is that configuration options
-are more suited to persistence; i.e. you'll most likely put them
-in a file that is used at every execution of StationTable.
+StationTable supports almost all the options documented in 
+B<ghcn_fetch.pl>.  The only options not supported are ones that
+are listed in the Command-Line Only Options section of the POD, namely: 
+-help, -usage, -readme, -gui, -optfile, and -outclip.
 
-=head2 Cache
+Options can be passed directly to the API via B<set_options()>.
 
-Cache options are used internally by StationTable when it calls
-URI::Fetch to get pages of data from the GHCN web respository.
+Options can also be defined in a file (called a B<profile>) that will 
+be loaded at runtime and merged with the options passed to B<set_options>.
 
-=over 4
+Options passed to B<set_options()> must be defined as a perl hash 
+structure. See B<ghcn_fetch.pl -help> for a list of all options in 
+Getopts::Long format.  Simply translate the option to a hash 
+key/value pair.  For example, B<-report detail> becomes B<report => 
+'detail'>.
 
-=item root
-
-This defines a path to a folder which will be used to cache web
-pages.  See the nonetwork user option for ways to control caching.
-
-=item namespace
-
-This defines the subfolder of root within which the cache files will
-reside.
-
-=back
+Options defined in a B<profile> file must be defined using
+YAML (see below).
 
 =head2 Aliases
 
@@ -2520,22 +2457,23 @@ Aliases are a convenience feature that allow you to define mnemonic
 shortcuts for specific stations.  GHCN station id's (like CA006106000)
 are difficult to remember and type, as can GHCN station names.
 Frequently-used station id's can be given easier alias names that
-can be use in the -location option for precise and reliable data
+can be used in the -location option for precise and reliable data
 retrieval.
 
 The entries within the aliases hash are simply keyword/value pairs
 that represent the mnemonic alias name and the station id (or id's)
 that are to be retrieved when that alias is used in -location.
 
+Aliases can only be defined via the B<set_options> API or in a B<profile>
+file.  There is no command-line option for defining them.
+
 =head2 YAML Example
 
-This is what the YAML content for a typical configuation file would
+This is what the YAML content for a typical profile file would
 look like:
 
     ---
-    cache:
-        root: C:/ghcn_cache_new
-        namespace: ghcn_new
+    cachedir: C:/ghcn_cache_new
 
     aliases:
         yow: CA006106000,CA006106001    # Ottawa airport
@@ -2543,25 +2481,19 @@ look like:
 
 =head2 Hash Example
 
-Here's what the typical config file would look like as a perl hash
-structure:
+Here's what the options would look like as a hash passed to the 
+B<ste_options> API call:
 
-    config_options => {
-        cache => {
-            root        => 'C:/ghcn_cache_new',
-            namespace   => 'ghcn_new',
-        }
+    %options = (
+        cachedir => 'C:/ghcn_cache',
         aliases => {
             yow => 'CA006106000,CA006106001',    # Ottawa airport
             cda => 'CA006105976,CA006105978',    # Ottawa (CDA and CDA RCS)
         }
-    }
-
-=head1 USER OPTIONS
-
-See B<ghcn_fetch.pl -help> for a list of all user options in Getopts::Long
-format.  Simply translate to a hash key/value pair.  For example,
-B<-report detail> becomes B<report => 'detail'>.
+    );
+    
+    my $ghcn->Weather::GHCN::StationTable->new();
+    $ghcn->set_options(%options);
 
 =head1 VERSIONING and COMPATIBILITY
 
@@ -2571,12 +2503,12 @@ compatibility with Dist::Zilla version support, so that all modules
 in GHCN will get the same version number upon release.  See also
 L<https://metacpan.org/pod/version>.
 
-The first digit of the string is a major release numbers, and the 
-second is the minor release number.  With the exception of v0.0 
-releases, which should be considered experimental pre-production 
-versions, the interface is intended to be upward compatible within a 
-set of releases sharing the same major release number.  If an 
-incompatible change becomes necessary, the major release number will 
+The first digit of the string is a major release numbers, and the
+second is the minor release number.  With the exception of v0.0
+releases, which should be considered experimental pre-production
+versions, the interface is intended to be upward compatible within a
+set of releases sharing the same major release number.  If an
+incompatible change becomes necessary, the major release number will
 be incremented.
 
 An increment to the minor release number indicates significant new

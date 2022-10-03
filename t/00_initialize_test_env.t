@@ -18,7 +18,7 @@ my $clean = 1
 
 my $errors_aref;
 
-# Clean out the cache if this script is run with command line argument 
+# Clean out the cache if this script is run with command line argument
 # 'clean'.  To invoke this option when running 'prove', use the
 # arisdottle; i.e. prove :: clean
 #
@@ -27,9 +27,9 @@ my $errors_aref;
 #
 if ( $clean ) {
     if (-e $cachedir) {
-        my $cache = Weather::GHCN::CacheURI->new($cachedir);
+        my $cache = Weather::GHCN::CacheURI->new($cachedir, "never");
         my @errors = $cache->clean_cache;
-        is_deeply \@errors, [], 'removed contents of cache ' . $cachedir;            
+        is_deeply \@errors, [], 'removed contents of cache ' . $cachedir;
     } else {
         ok 1, "*I* cache folder doesn't exist yet: " . $cachedir;
     }

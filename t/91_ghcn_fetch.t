@@ -5,15 +5,43 @@ use v5.18;      # minimum needed for Object::Pad
 use FindBin;
 use lib $FindBin::Bin . '/../lib';
 
-use Test::More tests => 10;
-use Capture::Tiny       qw( capture );
+use Test::More tests => 11;
+
+use Capture::Tiny             qw( capture );
+use Const::Fast;
 use Module::Load::Conditional qw(check_install);
+use Path::Tiny;
 
 use Weather::GHCN::App::Fetch;
 
-my $profile = $FindBin::Bin . '/ghcn_fetch.yaml';
+my $Bin = $FindBin::Bin;
 
-BAIL_OUT if not -r $profile;
+const my $TRUE   => 1;          # perl's usual TRUE
+const my $FALSE  => not $TRUE;  # a dual-var consisting of '' and 0
+const my $PROFILE => path($Bin)->child('ghcn_fetch.yaml');
+
+my $Cachedir = path($Bin,'ghcn_cache');
+
+if (not -d $Cachedir) {
+    BAIL_OUT "*E* cached folder is missing";
+}
+
+my $Refresh;       # control caching
+
+my @cachefiles = path($Cachedir)->children;
+if (@cachefiles > 0) {
+    # do not contact the server
+    $Refresh = 'never';
+    ok $TRUE, "using cached files: $Cachedir\n";
+} else {
+    # The cache is empty, enable refreshing the cache.
+    # Note that it may take some time to fetch the pages.
+    # Expect the cache to be about 45 Mb
+    $Refresh = 'always';
+    ok $TRUE, "creating cache: $Cachedir\n";
+}
+
+BAIL_OUT if not -r $PROFILE;
 
 my @args = (
         '-country',     'US',
@@ -22,10 +50,11 @@ my @args = (
         '-active',      '1900-1910',
         '-report',      '',
         '-refresh',     'never',
-        '-profile',     $profile,
+        '-profile',     $PROFILE,
+        '-cachedir',    $Cachedir,
 );
 
-my ($stdout, $stderr) = capture {   
+my ($stdout, $stderr) = capture {
     Weather::GHCN::App::Fetch->run( \@args );
 };
 
@@ -57,7 +86,7 @@ is $opt_href->{'report'}, 'detail', 'get_user_options_no_tk';
 
 if ( check_install(module=>'Tk') and check_install(module=>'Tk::Getopt')) {
     $opt_href = Weather::GHCN::App::Fetch::get_user_options_tk;
-    is $opt_href->{'report'}, 'detail', 'get_user_options_tk';   
+    is $opt_href->{'report'}, 'detail', 'get_user_options_tk';
 } else {
     ok 1, 'Tk or Tk::Getopt not installed';
 }
