@@ -25,14 +25,14 @@
 # be one of daily, weekly or monthly).
 #
 # Because this script loads station metadata and data, it relies on data
-# cached in t\ghcn_cache to (a) improve performance by avoiding the 
-# overhead of an GHCN::CacheURI->fetch call across the network; and (b) 
+# cached in t\ghcn_cache to (a) improve performance by avoiding the
+# overhead of an GHCN::CacheURI->fetch call across the network; and (b)
 # so that the data is stable and portable for testing purposes.  The -
-# refresh option is set to constant $REFRESH, which is set to 'never', 
-# to force the cache routines to only fetch from the cache.  If any 
-# pages are missing, the fetch will return undef and test cases will 
-# fail.  For this reason, it's best not to fiddle with the 
-# $config_options cache options.
+# refresh option is set to constant $REFRESH, which is set to 'never',
+# to force the cache routines to only fetch from the cache.  If any
+# pages are missing, the fetch will return undef and test cases will
+# fail.  For this reason, it's best not to fiddle with the
+# $profile_options cache options.
 #
 # You can change options by calling set_options again, and you can even
 # skip calling load_stations if the changes you made to options are
@@ -68,89 +68,81 @@ const my $FALSE  => not $TRUE;  # a dual-var consisting of '' and 0
 const my $EMPTY  => '';
 const my $NL     => qq(\n);
 
-const my $CONFIG_FILE => path($Bin)->child('ghcn_fetch.yaml');
+const my $PROFILE => path($Bin)->child('ghcn_fetch.yaml');
 
-my $cachedir = path($Bin,'ghcn_cache');
-my @cachefiles = path($cachedir)->children;
+my $Cachedir = path($Bin,'ghcn_cache');
 
-if (not -d $cachedir) {
+if (not -d $Cachedir) {
     BAIL_OUT "*E* cached folder is missing";
 }
 
 my $Refresh;       # control caching
 
+my @cachefiles = path($Cachedir)->children;
 if (@cachefiles > 0) {
     # do not contact the server
     $Refresh = 'never';
-    ok $TRUE, "using cached files: $cachedir\n";
+    ok $TRUE, "using cached files: $Cachedir\n";
 } else {
     # The cache is empty, enable refreshing the cache.
     # Note that it may take some time to fetch the pages.
     # Expect the cache to be about 45 Mb
     $Refresh = 'always';
-    ok $TRUE, "creating cache: $cachedir\n";
+    ok $TRUE, "creating cache: $Cachedir\n";
 }
 
 my $ghcn;
 my $stn_href;
 my $Opt;
 
-# get config options from the test options file instead of from
-# the default, which is ~/.ghcn_fetch.yaml
-my $cache_for_testing = { cachedir => $cachedir };
+# explicitly set the cache location so it doesn't default from a user profile
+# and set the refresh option according to whether or not we have cache files
+my %test_opts = (cachedir => $Cachedir, refresh => $Refresh);
 
 # skip to START_TESTING if the word 'debug' is a command line argument
-goto START_TESTING 
+goto START_TESTING
     if grep { 'debug' eq lc $_ } @ARGV;;
 
-subtest 'set_options with config_options' => sub {
+subtest 'aliases defined and used' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
+                %test_opts,
                 location  => 'yow',
-                refresh   => $Refresh,
-            },
-            config_options => {
                 aliases => {
                     yow => 'CA006106000,CA006106001',
                 }
-            }
         );
     like ref $opt, qr/ \A Hash::Wrap::Class /xms, 'set_options returned a Hash::Wrap';
     is @errors, 0, 'set_options returned no errors';
 
-    ok $ghcn->opt_href->{location} eq 'CA006106000,CA006106001', 'alias yow from config_options ($ghcn->opt_href->{location})';
-    ok $opt->location eq 'CA006106000,CA006106001', 'alias yow from config_options ($opt->location)';
+    my %stns = ( 'CA006106000' => 1, 'CA006106001' => 1 );
+    is_deeply $ghcn->stnid_filter_href, \%stns, 'alias yow from set_options';
 };
 
-subtest 'set_options with config_file' => sub {
+subtest 'alias used but no aliases defined' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'yow',
-                refresh   => $Refresh,
-            },
-            config_file => $CONFIG_FILE,
+            %test_opts,
+            location    => 'cda',
+            profile     => $PROFILE,
         );
 
     is @errors, 0, 'set_options returned no errors';
 
-    ok $ghcn->profile_file, 'config_file accessor';
-    ok $ghcn->opt_href->{location} eq 'CA006106000,CA006106001', 'alias yow from config_options ($ghcn->opt_href->{location})';
-    ok $opt->location eq 'CA006106000,CA006106001', 'alias yow from config_options ($opt->location)';
+    ok $ghcn->profile_file, 'profile_file accessor';
+
+    my %stns = ( 'CA006105976' => 1, 'CA006105978' => 1 );
+    is_deeply $ghcn->stnid_filter_href, \%stns, 'alias cda from profile_options';
 };
 
 subtest "station list (-loc ZZZZZ)" => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location  => 'ZZZZZ',
-                refresh   => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'ZZZZZ',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -165,15 +157,12 @@ subtest 'station list (-report "")' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                country     => 'US',
-                state       => 'NY',
-                location    => 'New York',
-                active      => '1900-1910',
-                report      => '',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            country     => 'US',
+            state       => 'NY',
+            location    => 'New York',
+            active      => '1900-1910',
+            report      => '',
         );
 
     like ref $opt, qr/ \A Hash::Wrap::Class /xms, 'set_options returned a Hash::Wrap';
@@ -203,14 +192,11 @@ subtest 'station-level data (-report detail)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                active      => '',
-                report      => 'detail',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            active      => '',
+            report      => 'detail',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -253,13 +239,10 @@ subtest 'daily data (-report daily)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                report      => 'daily',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            report      => 'daily',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -278,13 +261,10 @@ subtest 'monthly data (-report monthly)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                report      => 'monthly',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            report      => 'monthly',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -306,13 +286,10 @@ subtest 'yearly data (-report yearly)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                report      => 'yearly',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            report      => 'yearly',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -386,13 +363,10 @@ subtest 'missing_data' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976,CA006105978', # OTTAWA CDA & CDA RCS
-                range       => '2017-2018',
-                report      => 'yearly',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976,CA006105978', # OTTAWA CDA & CDA RCS
+            range       => '2017-2018',
+            report      => 'yearly',
         );
 
     is @errors, 0, 'set_options return no errors';
@@ -425,14 +399,11 @@ subtest 'missing_data' => sub {
     $ghcn = Weather::GHCN::StationTable->new;
 
     ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                location    => 'CA006105976', # OTTAWA CDA & CDA RCS
-                range       => '2014-2014',
-                report      => 'yearly',
-                quality     => 0,
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA & CDA RCS
+            range       => '2014-2014',
+            report      => 'yearly',
+            quality     => 0,
         );
 
     is @errors, 0, 'set_options return no errors';
@@ -449,18 +420,15 @@ subtest 'reload with new options' => sub {
 
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
-    my $uo_href = {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                active      => '',
-                report      => 'detail',
-                refresh     => $Refresh,
-            };
-
-    my ($opt, @errors) = $ghcn->set_options(
-            user_options => $uo_href,
-            config_options => $cache_for_testing,
+    my %user_opts = (
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            active      => '',
+            report      => 'detail',
         );
+
+    my ($opt, @errors) = $ghcn->set_options( %user_opts );
     ok $opt, '------- set_options 1: -loc CA006105976 -range 1900-1900 -active "" -report detail';
 
     is @errors, 0, 'set_options return no errors';
@@ -484,22 +452,19 @@ subtest 'reload with new options' => sub {
     my %h = $ghcn->datarow_as_hash( $rows[0] );
     is $h{'StationId'}, 'CA006105976', 'datarow_as_hash seems ok';
 
-    $uo_href->{fmonth}  = 1;
-    $uo_href->{fday}    = '15-16';
-    $uo_href->{tavg}    = $TRUE;
-    $uo_href->{precip}  = $TRUE;
+    $user_opts{fmonth}  = 1;
+    $user_opts{fday}    = '15-16';
+    $user_opts{tavg}    = $TRUE;
+    $user_opts{precip}  = $TRUE;
 
     # Normally, quality defaults to 90%.  Any station that doesn't have
     # at least 90% data coverage within the range will be dropped from
     # the output.  Since fmonth = 1 and fday = 15-16 we'll only have
     # 2 days for the range of 1900-1900.  That's just 0.5% so unless
     # we lower the quality threshold to 0 there won't be any data output.
-    $uo_href->{quality} = 0;
+    $user_opts{quality} = 0;
 
-    ($opt, @errors) = $ghcn->set_options(
-            user_options => $uo_href,
-            config_options => $cache_for_testing,
-        );
+    ($opt, @errors) = $ghcn->set_options( %user_opts );
     ok $opt, '------- set_options 2: adding -fmonth 1 -fday 15-16 -tavg -precip -quality 0';
 
     is @errors, 0, 'set_options return no errors';
@@ -518,19 +483,16 @@ subtest 'reload with new options' => sub {
     ok @rows, '------- load_data 2';
     is @rows, 2, 'fmonth 1 fday 15-16 returned 2 rows';
 
-    $uo_href = {
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '1900-1900',
-                active      => '',
-                report      => 'yearly',
-                precip      => 1,
-                refresh     => $Refresh,
-            };
-
-    ($opt, @errors) = $ghcn->set_options(
-            user_options => $uo_href,
-            config_options => $cache_for_testing,
+    %user_opts = (
+            %test_opts,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '1900-1900',
+            active      => '',
+            report      => 'yearly',
+            precip      => 1,
         );
+
+    ($opt, @errors) = $ghcn->set_options( %user_opts );
     $ghcn->load_data();
     $ghcn->summarize_data();
     @rows = $ghcn->get_summary_data( list => 1 );
@@ -546,16 +508,13 @@ subtest "station list (-kml '<tempfile>')" => sub {
     my $kmlfile = Path::Tiny->tempfile('__temp_ghcn_kmlfile_XXXXX');
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
+                %test_opts,
                 country     => 'US',
                 state       => 'NY',
                 location    => 'New York',
                 active      => '1900-1910',
                 report      => '',
                 kml         => $kmlfile,
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
         );
 
     like ref $opt, qr/ \A Hash::Wrap::Class /xms, 'set_options returned a Hash::Wrap';
@@ -577,13 +536,10 @@ subtest 'station list (-gps "40.7789 -73.9692" -radius 12)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                gps         => '40.7789 -73.9692',
-                radius      => 12,
-                active      => '1900-1910',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            gps         => '40.7789 -73.9692',
+            radius      => 12,
+            active      => '1900-1910',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -601,17 +557,14 @@ subtest 'station-level data (-report detail)' => sub {
     $ghcn = new_ok 'Weather::GHCN::StationTable';
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                anomalies   => 1,
-                location    => 'CA006105976', # OTTAWA CDA
-                range       => '2016-2019',
-                baseline    => '2016-2017',
-                fmonth      => 2,
-                fday        => '2-3',
-                report      => 'detail',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            anomalies   => 1,
+            location    => 'CA006105976', # OTTAWA CDA
+            range       => '2016-2019',
+            baseline    => '2016-2017',
+            fmonth      => 2,
+            fday        => '2-3',
+            report      => 'detail',
         );
 
     is @errors, 0, 'set_options returned no errors';
@@ -672,15 +625,12 @@ subtest "station list (-partial)" => sub {
     $ghcn = Weather::GHCN::StationTable->new;
 
     my ($opt, @errors) = $ghcn->set_options(
-            user_options => {
-                country     => 'US',
-                state       => 'NY',
-                active      => '1870-1880',
-                partial     => 1,
-                report      => '',
-                refresh     => $Refresh,
-            },
-            config_options => $cache_for_testing,
+            %test_opts,
+            country     => 'US',
+            state       => 'NY',
+            active      => '1870-1880',
+            partial     => 1,
+            report      => '',
         );
 
     is @errors, 0, 'set_options returned no errors';

@@ -7,7 +7,7 @@ Weather::GHCN::Station - class for Station metadata
 =head1 SYNOPSIS
 
     use Weather::GHCN::Station;
-    
+
     my $stn_obj = Weather::GHCN::Station->new (
         id      => 'CA006105976',
         country => 'CA',
@@ -22,9 +22,9 @@ Weather::GHCN::Station - class for Station metadata
 
 =head1 DESCRIPTION
 
-The B<Weather::GHCN::Station> class is used to encapsulate the metadata for a 
-station as obtained from the NOAA Global Historical Climatology 
-Network data repository.  Data is sourced from the station list and 
+The B<Weather::GHCN::Station> class is used to encapsulate the metadata for a
+station as obtained from the NOAA Global Historical Climatology
+Network data repository.  Data is sourced from the station list and
 the station inventory.
 
 The module is primarily for use by Weather::GHCN::Fetch and Weather::GHCN::StationTable.

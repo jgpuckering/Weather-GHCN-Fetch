@@ -114,8 +114,8 @@ Abbrevations are permitted.
 =item -report "" (or omitted)
 
 This is the default option when no report option is provided, or when
-the option is an empty string.  It generates a list of the stations 
-which match the criteria provided (location, geo coordinates, ranges 
+the option is an empty string.  It generates a list of the stations
+which match the criteria provided (location, geo coordinates, ranges
 etc.)  No actual weather data is accessed; only station data.
 
 =item -report daily
@@ -429,8 +429,8 @@ Display the Synopsis section of this documentation.
 =head1 CONFIGURATION FILE
 
 At startup, ghcn_fetch will look for the file .ghcn_fetch.yaml in
-the user home directory (~ on Unix, %UserProfile% on Windows) 
-in order to capture some additional options. The file content should 
+the user home directory (~ on Unix, %UserProfile% on Windows)
+in order to capture some additional options. The file content should
 contain something like this:
 
     ---
