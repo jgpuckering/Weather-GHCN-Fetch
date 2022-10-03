@@ -86,17 +86,9 @@ my $Tk_opt_table = [
         ]
     ],
     ['', '', '-'],
-    ['refresh',    '=s',   'yearly',
-        help => 'Refresh yearly, (default), never, always, or if N days old (N > 1)',
-        label => 'Cache refresh option',
-        choices => [ 'yearly', 'always', 'never', '<N days old>' ],
-    ],
+    ['dataonly',    '!',    undef, label => 'Only print the data table'],
     ['performance', '!',    undef, label => 'Report performance statistics'],
     ['verbose',     '!',    undef, label => 'Print information messages'],
-    ['dataonly',    '!',    undef, label => 'Only print the data table'],
-    ['cachedir',    '=s',   undef, label => 'Directory for cached files'],
-    ['profile',     '=s',   $DEFAULT_PROFILE_FILE,
-                                   label => 'Configuration options (for testing only)', nogui => 1],
 
     'Date filters',
     ['range',       '=s',   undef, label => 'Filter selected station data by year range'],
@@ -106,7 +98,7 @@ my $Tk_opt_table = [
     ['', '','-'],
     ['fday',        '=s',   undef, label => 'Filter output to include a specific day'],
     ['fmonth',      '=s',   undef, label => 'Filter output to include a specific month'],
-
+   
     'GIS filters',
     ['gps',         '=s',   undef, label => 'Filter stations by latitude and longitude',
                                    help  => 'Enter decimal latitude and longitude'],
@@ -126,6 +118,16 @@ my $Tk_opt_table = [
     ['color',       '=s',   'red', label => 'Color to use for KML placemarks',
                                    alias => ['colour'] ],
     ['label',       '!',    undef, label => 'Label KML placemarks'],
+
+    'Profile and Cache',
+    ['profile',     '=s',   $DEFAULT_PROFILE_FILE,
+                                   label => 'Profile file location (for option preloading)'], #, nogui => 1],
+    ['cachedir',    '=s',   undef, label => 'Directory for cached files'],
+    ['refresh',    '=s',   'yearly',
+        help => 'Refresh yearly, (default), never, always, or if N days old (N > 1)',
+        label => 'Cache refresh option',
+        choices => [ 'yearly', 'always', 'never', '<N days old>' ],
+    ],
 ];
 
 #####################################################################
