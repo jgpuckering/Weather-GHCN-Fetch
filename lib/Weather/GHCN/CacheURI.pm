@@ -152,7 +152,7 @@ Returns a list of errors for any files that couldn't be removed.
 =cut
 
 method clean_cache () {
-    my $re = qr{ \A [\w-]+ [.] (txt|dly) \Z }xms;
+    my $re = qr{ \A ( ghcnd-\w+[.]txt | \w+[.]dly ) \Z }xms;
     my @files = path($_cachedir)->children( $re );
     my @errors;
     foreach my $f (@files) {
