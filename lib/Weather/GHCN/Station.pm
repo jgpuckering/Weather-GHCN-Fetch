@@ -1,5 +1,7 @@
 # Weather::GHCN::Station.pm - class for Station metadata
 
+## no critic (Documentation::RequirePodAtEnd)
+
 =head1 NAME
 
 Weather::GHCN::Station - class for Station metadata
@@ -30,6 +32,11 @@ the station inventory.
 The module is primarily for use by Weather::GHCN::Fetch and Weather::GHCN::StationTable.
 
 =cut
+
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+## no critic [TestingAndDebugging::RequireUseWarnings]
+## no critic [References::ProhibitDoubleSigils]
 
 use v5.18;  # minimum for Object::Pad
 use Object::Pad 0.66 qw( :experimental(init_expr) );

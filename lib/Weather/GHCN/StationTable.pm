@@ -55,15 +55,17 @@ The module is primarily for use by modules Weather::GHCN::Fetch.
 
 =cut
 
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+
 use v5.18;  # minimum for Object::Pad
+use warnings;
 use Object::Pad 0.66 qw( :experimental(init_expr) );
 
 package Weather::GHCN::StationTable;
 class   Weather::GHCN::StationTable;
 
 our $VERSION = 'v0.0.000';
-
-## no critic [References::ProhibitDoubleSigils]
 
 # directly used by this module
 use Carp                qw( carp croak );
@@ -646,6 +648,7 @@ method datarow_as_hash ( $row_aref ) {
     my @header = $self->get_header( list => 1 );
     my %h;
 
+    ## no critic [ProhibitDoubleSigils]
     @h{@header} = $row_aref->@*;
 
     return %h;
@@ -688,6 +691,8 @@ method get_missing_rows ( %args ) {
     my %loc;
     map { $loc{$_} = $_station{$_}->name } keys %_station;
 
+    ## no critic [ProhibitDoubleSigils]
+    ## no critic [ProhibitMagicNumbers]
     foreach my $stnid ( sort keys $_missing_href->%* ) {
         my $yyyy_href = $_missing_href->{$stnid};
         foreach my $yyyy ( sort keys $yyyy_href->%* ) {
@@ -1136,6 +1141,7 @@ method load_stations () {
         # (stationid).(latitu).(longitu).(elev).st.--name-----------------------
         # ACW00011604  17.1167  -61.7833   10.1    ST JOHNS COOLIDGE FLD
 
+        ## no critic [ProhibitDoubleSigils]
         ## no critic [ProhibitMagicNumbers]
         my $id = substr $line, 0, 11;
 
@@ -1501,6 +1507,7 @@ method _compute_baseline ($stn, $baseline) {
         return;
     }
 
+    ## no critic [ProhibitDoubleSigils]
     while ( my ($md,$elem_href) = each %baseline_data ) {
         while ( my ($elem, $aref) = each $elem_href->%* ) {
             my ($sum, $count) = $aref->@*;
@@ -1590,6 +1597,7 @@ method _filter_stations ($stations_href) {
     my $opt_range_nrs  = rng_new( $Opt->range );
     my $opt_active_nrs = rng_new( $Opt->active );
 
+    ## no critic [ProhibitDoubleSigils]
     foreach my $stn (values $stations_href->%*) {
         my $stn_active_nrs = rng_new( $stn->active );
 
@@ -1653,6 +1661,7 @@ method _load_daily_data ($stn, $stn_content) {
 
     $self->_initialize_flag_cnts();
 
+    ## no critic [ProhibitDoubleSigils]
     ## no critic [ProhibitMagicNumbers]
 
     $_tstats->start('Load_daily_data');
@@ -1874,6 +1883,7 @@ method _report_gaps ($stn, $gaps_href) {
 
     $_tstats->start('Report_gaps');
 
+    ## no critic [ProhibitDoubleSigils]
     my @years = sort keys $gaps_href->%*;
 
     if ( $Opt->active ) {
@@ -1910,7 +1920,8 @@ method _report_gaps ($stn, $gaps_href) {
         }
     }
 
-    my (undef, undef, undef , $mday, $mon, $year) = localtime(time);
+    my (undef, undef, undef , $mday, $mon, $year) = localtime time;
+    ## no critic [ValuesAndExpressions::ProhibitMagicNumbers]
     my ($this_yyyy, $this_mm) = ($year+1900, $mon+1);
 
     foreach my $yyyy ( @years ) {
@@ -1920,6 +1931,7 @@ method _report_gaps ($stn, $gaps_href) {
               or
                 $Opt->anomalies and not $opt_baseline_nrs->contains($yyyy) );
 
+        ## no critic [ProhibitDoubleSigils]
         ## no critic [ProhibitMagicNumbers]
         my $end_month = $yyyy == $this_yyyy
             ? $this_mm
@@ -2122,12 +2134,15 @@ sub _gis_distance ($lat1, $lon1, $lat2, $lon2) {
     $lon2 = deg2rad($lon2);
     $lat2 = deg2rad($lat2);
 
+    ## no critic [ProhibitParensWithBuiltins]
+    ## no critic [ProhibitMagicNumbers]
+
     my $dlon = $lon2 - $lon1;
     my $dlat = $lat2 - $lat1;
     my $a = (sin($dlat/2)) ** 2 + cos($lat1) * cos($lat2) * (sin($dlon/2)) ** 2;
     my $c = 2 * atan2(sqrt($a), sqrt(1-$a));
 
-    return 6371640 * $c / 1000.0;
+    return 6_371_640 * $c / 1000.0;
 }
 
 #----------------------------------------------------------------------
@@ -2173,7 +2188,7 @@ sub _parse_missing_text ( $s ) {
     my @mmdd;
     my @f = split m{ \s }xms, $s;
 
-    my $mmm_re    = qr{ [A-Z][a-z][a-z] }xms;
+    my $mmm_re    = qr{ [[:upper:]][[:lower:]][[:lower:]] }xms;
     my $nbr_rng   = qr{ \d+ ( [-] \d+)? }xms;
     my $rng_list  = qr{ $nbr_rng (, $nbr_rng)* }xms;
 
@@ -2432,20 +2447,20 @@ sub _memsize ( $ref, $opt_performance ) {
 
 =head1 OPTIONS
 
-StationTable supports almost all the options documented in 
+StationTable supports almost all the options documented in
 B<ghcn_fetch.pl>.  The only options not supported are ones that
-are listed in the Command-Line Only Options section of the POD, namely: 
+are listed in the Command-Line Only Options section of the POD, namely:
 -help, -usage, -readme, -gui, -optfile, and -outclip.
 
 Options can be passed directly to the API via B<set_options()>.
 
-Options can also be defined in a file (called a B<profile>) that will 
+Options can also be defined in a file (called a B<profile>) that will
 be loaded at runtime and merged with the options passed to B<set_options>.
 
-Options passed to B<set_options()> must be defined as a perl hash 
-structure. See B<ghcn_fetch.pl -help> for a list of all options in 
-Getopts::Long format.  Simply translate the option to a hash 
-key/value pair.  For example, B<-report detail> becomes B<report => 
+Options passed to B<set_options()> must be defined as a perl hash
+structure. See B<ghcn_fetch.pl -help> for a list of all options in
+Getopts::Long format.  Simply translate the option to a hash
+key/value pair.  For example, B<-report detail> becomes B<report =>
 'detail'>.
 
 Options defined in a B<profile> file must be defined using
@@ -2481,7 +2496,7 @@ look like:
 
 =head2 Hash Example
 
-Here's what the options would look like as a hash passed to the 
+Here's what the options would look like as a hash passed to the
 B<ste_options> API call:
 
     %options = (
@@ -2491,7 +2506,7 @@ B<ste_options> API call:
             cda => 'CA006105976,CA006105978',    # Ottawa (CDA and CDA RCS)
         }
     );
-    
+
     my $ghcn->Weather::GHCN::StationTable->new();
     $ghcn->set_options(%options);
 

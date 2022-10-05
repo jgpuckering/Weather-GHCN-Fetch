@@ -1,5 +1,9 @@
 # Weather::GHCN::Fetch.pm - class for creating applications that fetch NOAA GHCN data
 
+## no critic (Documentation::RequirePodAtEnd)
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+## no critic [TestingAndDebugging::RequireUseWarnings]
+
 use v5.18;  # minimum for Object::Pad
 
 package Weather::GHCN::Fetch;

@@ -26,7 +26,11 @@ The module is primarily for use by module Weather::GHCN::StationTable.
 
 =cut
 
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+
 use v5.18;  # minimum for Object::Pad
+use warnings;
 use Object::Pad 0.66 qw( :experimental(init_expr) );
 
 package Weather::GHCN::TimingStats;
@@ -117,14 +121,14 @@ with '_').  The overall duration is associated with label '_Overall'.
 
 method finish () {
     my @warnings;
-    
+
     foreach my $k ( keys $timer_href->%* ) {
         if ( $timer_href->{$k}->{START} and not exists $timer_href->{$k}->{DUR} ) {
             push @warnings, '*W* forcing stop of timer ' . $k;
             $self->stop($k);
         }
     }
-    
+
     # calculate the time not captured by other timing categories
     $timer_href->{'_Other'}->{DUR} = $timer_href->{'_Overall'}->{DUR};
 

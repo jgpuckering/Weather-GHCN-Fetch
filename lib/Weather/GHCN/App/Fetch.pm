@@ -1,5 +1,7 @@
 # Weather::GHCN::Fetch.pm - class for creating applications that fetch NOAA GHCN data
 
+## no critic (Documentation::RequirePodAtEnd)
+
 =head1 NAME
 
 Weather::GHCN::App::Fetch - Fetch station and weather data from the NOAA GHCN repository
@@ -37,6 +39,11 @@ See ghcn_fetch.pl -help for details.
 ########################################################################
 # Pragmas
 ########################################################################
+
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ProhibitVersionStrings]
+## no critic [RequireUseWarnings]
+
 use v5.18;  # minimum for Object::Pad
 
 package Weather::GHCN::App::Fetch;
@@ -47,6 +54,22 @@ use feature 'signatures';
 no warnings 'experimental::signatures';
 
 ########################################################################
+# perlcritic rules
+########################################################################
+
+## no critic [ProhibitSubroutinePrototypes]
+## no critic [ErrorHandling::RequireCarping]
+## no critic [Modules::ProhibitAutomaticExportation]
+## no critic [InputOutput::RequireBriefOpen]
+
+# due to subroutine signatures, perlcritic can't seem to handle disabling
+# the following warnings on the subs where they occur
+## no critic [Subroutines::ProhibitExcessComplexity]
+
+# due to use of postfix dereferencing, we have to disable these warnings
+## no critic [References::ProhibitDoubleSigils]
+
+########################################################################
 # Export
 ########################################################################
 
@@ -55,21 +78,6 @@ require Exporter;
 use base 'Exporter';
 
 our @EXPORT = ( 'run' );
-
-########################################################################
-# perlcritic rules
-########################################################################
-
-## no critic [ErrorHandling::RequireCarping]
-## no critic [InputOutput::RequireBriefOpen]
-## no critic [ProhibitSubroutinePrototypes]
-
-# due to subroutine signatures, perlcritic can't seem to handle disabling
-# the following warnings on the subs where they occur
-## no critic [Subroutines::ProhibitExcessComplexity]
-
-# due to use of postfix dereferencing, we have to disable these warnings
-## no critic [References::ProhibitDoubleSigils]
 
 ########################################################################
 # Libraries and Features
@@ -86,7 +94,7 @@ use Path::Tiny;
 use Text::Abbrev;
 
 # modules for Windows only
-use if $^O eq 'MSWin32', 'Win32::Clipboard';
+use if $OSNAME eq 'MSWin32', 'Win32::Clipboard';
 
 # conditional modules
 use Module::Load::Conditional qw( can_load check_install requires );
@@ -106,7 +114,7 @@ our $TK_MODULES = {
 };
 
 # is it ok to use Win32::Clipboard?
-our $USE_WINCLIP = $^O eq 'MSWin32';
+our $USE_WINCLIP = $OSNAME eq 'MSWin32';
 our $USE_TK      = can_load( modules => $TK_MODULES );
 
 my $Opt;    # options object, with property accessors for each user option
@@ -158,7 +166,7 @@ sub run ($progname, $argv_aref) {
 
     local @ARGV = $argv_aref->@*;
 
-    warn "*W* -gui option unavailable -- try installing Tk and Tk::GetOptions"
+    warn '*W* -gui option unavailable -- try installing Tk and Tk::GetOptions'
         if not $USE_TK;
 
     my $ghcn = Weather::GHCN::StationTable->new;
@@ -230,8 +238,13 @@ sub run ($progname, $argv_aref) {
         exit;
     }
 
-    # default to -gui if no command line arguments were provided and
-    # we aren't taking input from a pipe or file
+    # Default to -gui if no command line arguments were provided and
+    # we aren't taking input from a pipe or file.
+    # PBP recommends using IO::Interactive::is_interactive rather than -t
+    # because it better deals with ARGV magic; but here we just need to
+    # know if *STDIN is pointing at the terminal so we suppress the
+    # perlcritic warning.
+    ## no critic [ProhibitInteractiveTest]
     $Opt_gui = 1 if $USE_TK and $argv_count == 0 and -t *STDIN;
 
     my $user_opt_href = get_user_options($Opt_file);
@@ -262,15 +275,15 @@ sub run ($progname, $argv_aref) {
     if ( -p *STDIN || -f *STDIN ) {
         my $ii;
         $ghcn->stnid_filter_href( {} );
-        while (<STDIN>) {
+        while (my $line = <STDIN>) {       ## no critic [ProhibitExplicitStdin]
             chomp;
-            my @id_list = $_ =~ m{ $STN_ID_RE }xmsg;
+            my @id_list = $line =~ m{ $STN_ID_RE }xmsg;
             foreach my $id ( @id_list ) {
                 $ghcn->stnid_filter_href->{$id}++;
                 $ii++;
             }
         }
-        die "*E* no station id's found in the input"
+        die '*E* no station id\'s found in the input'
             unless $ii;
     }
 
@@ -367,7 +380,7 @@ WRAP_UP:
     # send output to the Windows clipboard
     if ( $Opt_outclip and $USE_WINCLIP ) {
         Win32::Clipboard->new()->Set( $output );
-        select $old_fh;
+        select $old_fh;     ## no critic [ProhibitOneArgSelect]
     }
 
     return;
@@ -415,7 +428,11 @@ sub get_user_options_no_tk ( $optfile=undef ) {
     if ($optfile) {
         my $saved_opt_perlsrc = join $SPACE, path($optfile)->lines( {chomp=>1} );
         my $loadoptions;
-        eval $saved_opt_perlsrc;
+
+        ## no critic [ProhibitStringyEval]
+        ## no critic [RequireCheckingReturnValueOfEval]
+        eval $saved_opt_perlsrc;    
+
         return $loadoptions;
     }
 
@@ -439,13 +456,12 @@ B<Tk::GetOptions> can use to store or load options.
 sub get_user_options_tk ( $optfile=undef ) {
 
     if (not $USE_TK) {
-        warn "*E* Tk or Tk::Getopt not installed";
+        warn '*E* Tk or Tk::Getopt not installed';
         return;
     }
 
     my %opt;
 
-    ## no critic [ProhibitNoisyQuotes]
     my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 
     my $optobj = Tk::Getopt->new(

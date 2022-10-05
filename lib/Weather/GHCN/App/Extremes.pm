@@ -1,5 +1,7 @@
 # Weather::GHCN::Extremes.pm - analyze of extremes from Weather::GHCN::Fetch.pm output
 
+## no critic (Documentation::RequirePodAtEnd)
+
 =head1 NAME
 
 Weather::GHCN::App::Extremes - Report temperature extremes from Weather::GHCN::Fetch output
@@ -17,7 +19,12 @@ See ghcn_extremes -help for details.
 ########################################################################
 # Pragmas
 ########################################################################
+
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+
 use v5.18;
+use warnings;
 
 package Weather::GHCN::App::Extremes;
 
@@ -25,6 +32,17 @@ our $VERSION = 'v0.0.000';
 
 use feature 'signatures';
 no warnings 'experimental::signatures';
+
+########################################################################
+# perlcritic rules
+########################################################################
+
+## no critic [Subroutines::ProhibitSubroutinePrototypes]
+## no critic [ErrorHandling::RequireCarping]
+## no critic [Modules::ProhibitAutomaticExportation]
+
+# due to use of postfix dereferencing, we have to disable these warnings
+## no critic [References::ProhibitDoubleSigils]
 
 ########################################################################
 # Export
@@ -37,16 +55,9 @@ use base 'Exporter';
 our @EXPORT = ( 'run' );
 
 ########################################################################
-# perlcritic rules
-########################################################################
-
-## no critic [Subroutines::ProhibitSubroutinePrototypes]
-## no critic [References::ProhibitDoubleSigils];
-## no critic [ErrorHandling::RequireCarping]
-
-########################################################################
 # Libraries
 ########################################################################
+use English         qw( -no_match_vars ) ;
 use Getopt::Long    qw( GetOptionsFromArray );
 use Pod::Usage;
 use Const::Fast;
@@ -57,14 +68,14 @@ use List::Util      qw(max min sum);
 use Set::IntSpan::Fast;
 
 # modules for Windows only
-use if $^O eq 'MSWin32', 'Win32::Clipboard';
+use if $OSNAME eq 'MSWin32', 'Win32::Clipboard';
 
 ########################################################################
 # Global delarations
 ########################################################################
 
 # is it ok to use Win32::Clipboard?
-our $USE_WINCLIP = $^O eq 'MSWin32';
+our $USE_WINCLIP = $OSNAME eq 'MSWin32';
 
 my $Opt;
 
@@ -133,6 +144,7 @@ sub run ($progname, $argv_aref) {
 
     my $years_set = Set::IntSpan::Fast->new;
 
+    ## no critic [RequireBriefOpen]
     my ( $output, $new_fh, $old_fh );
     if ( $Opt->outclip and $USE_WINCLIP ) {
         open $new_fh, '>', \$output
@@ -140,15 +152,15 @@ sub run ($progname, $argv_aref) {
         $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)
     }
 
-    my @files = $argv_aref->@*;
-    @files = ('-') unless @files;
+    @files = $argv_aref->@*;
+    @files = ($DASH) unless @files;
 
     foreach my $file (@files) {
         my $fh;
-        if ($file eq '-') {
+        if ($file eq $DASH) {
             $fh = *STDIN;
         } else {
-            open ($fh, '<', $file) or die;
+            open $fh, q(<), $file or die;
         }
 
         @ExtremeWaves = ();
@@ -189,7 +201,7 @@ WRAP_UP:
     # send output to the Windows clipboard
     if ( $Opt->outclip and $USE_WINCLIP ) {
         Win32::Clipboard->new()->Set( $output );
-        select $old_fh;
+        select $old_fh; ## no critic [ProhibitOneArgSelect]
     }
 
     return;
@@ -279,7 +291,6 @@ or cold) temperature during the wave.
 
 sub report_extremes_daycounts ($limit, $ndays, $cmp_op) {
     my %years;
-    my %location;
 
     my $daycount_col_head = sprintf '%d-day waves %s %dC', $ndays, $cmp_op, $limit;
     say join $TAB, 'StnId', 'Location', 'Year', 'YMD', $daycount_col_head, 'Avg C', 'Max C';

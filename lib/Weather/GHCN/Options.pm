@@ -22,7 +22,12 @@ The module is primarily for use by module Weather::GHCN::StationTable.
 
 =cut
 
+# these are needed because perlcritic fails to detect that Object::Pad handles these things
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+## no critic [TestingAndDebugging::RequireUseWarnings]
+
 use v5.18;  # minimum for Object::Pad
+use warnings;
 use Object::Pad 0.66 qw( :experimental(init_expr) );
 
 package Weather::GHCN::Options;
@@ -44,9 +49,11 @@ use YAML::Tiny;
 
 const my $TRUE   => 1;      # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
-const my $SPACE => q( );
-const my $EMPTY => q();
-const my $DASH  => q(-);
+const my $SPACE  => q( );
+const my $EMPTY  => q();
+const my $DASH   => q(-);
+const my $BAR    => q(|);
+const my $BANG   => q(!);
 const my $NEWLINE => qq(\n);
 
 const my $DEFAULT_PROFILE_FILE  => '~/.ghcn_fetch.yaml';
@@ -65,6 +72,10 @@ Create a new Options object.
 # both Tk::Getopt and to derive an options list of Getopt::Long
 # for when Tk::Getopt is not installed.
 ######################################################################
+
+## no critic [ValuesAndExpressions::ProhibitMagicNumbers]
+## no critic [ValuesAndExpressions::ProhibitNoisyQuotes]
+## no critic [ValuesAndExpressions::ProhibitEmptyQuotes]
 
 my $Tk_opt_table = [
     'Basic options',
@@ -98,7 +109,7 @@ my $Tk_opt_table = [
     ['', '','-'],
     ['fday',        '=s',   undef, label => 'Filter output to include a specific day'],
     ['fmonth',      '=s',   undef, label => 'Filter output to include a specific month'],
-   
+
     'GIS filters',
     ['gps',         '=s',   undef, label => 'Filter stations by latitude and longitude',
                                    help  => 'Enter decimal latitude and longitude'],
@@ -129,6 +140,10 @@ my $Tk_opt_table = [
         choices => [ 'yearly', 'always', 'never', '<N days old>' ],
     ],
 ];
+
+## use critic [ValuesAndExpressions::ProhibitMagicNumbers]
+## use critic [ValuesAndExpressions::ProhibitNoisyQuotes]
+## use critic [ValuesAndExpressions::ProhibitEmptyQuotes]
 
 #####################################################################
 # Class fields
@@ -267,7 +282,7 @@ method get_getopt_list :common () {
 
         my $label = $h{'label'} // $SPACE;
         my $alias_aref = $h{'alias'} // [];
-        my $opt_kw_with_aliases = join '|', $opt_kw, $alias_aref->@*;
+        my $opt_kw_with_aliases = join $BAR, $opt_kw, $alias_aref->@*;
 
         push @options_list, $opt_kw_with_aliases . $opt_type;
         push @options, [$opt_kw_with_aliases, $opt_type, $label];
@@ -615,7 +630,7 @@ method validate () {
     }
 
     push @errors, '*E* -gps argument must be decimal lat/long, separated by spaces or punctuation'
-        if $_opt_obj->gps and $_opt_obj->gps !~ m{ \A [+-]? \d{1,3} [.] \d+ ( [[:punct:]] | \s+ ) [+-]? \d{1,3} [.] \d+ \Z }xms;
+        if $_opt_obj->gps and $_opt_obj->gps !~ m{ \A [+-]? \d{1,3} [.] \d+ (?: [[:punct:]] | \s+ ) [+-]? \d{1,3} [.] \d+ \Z }xms;
 
     #-----------------------------------------------------------------
     # Maintenance Note
@@ -639,7 +654,7 @@ method validate () {
     my $report = lc $_opt_obj->report;
 
     # uncoverable branch true
-    croak "*E* undef report type"
+    croak '*E* undef report type'
         if not defined $report;
 
     push @errors, '*E* invalid report option: ' . $report
@@ -653,7 +668,7 @@ method validate () {
     my $refresh = lc $_opt_obj->refresh;
 
     # uncoverable branch true
-    croak "*E* undef refresh option"
+    croak '*E* undef refresh option'
         if not defined $refresh;
 
     push @errors, '*E* invalid refresh option: ' . $refresh
@@ -721,7 +736,7 @@ sub _get_boolean_options ($_tk_opt_aref) {
     foreach my $row ( $_tk_opt_aref->@* ) {
         next unless ref $row eq 'ARRAY';
         my ($name, $type) = $row->@*;
-        $boolean{$name}++ if $type eq '!';
+        $boolean{$name}++ if $type eq $BANG;
     }
 
     return \%boolean;

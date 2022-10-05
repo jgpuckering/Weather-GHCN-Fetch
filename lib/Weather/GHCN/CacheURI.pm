@@ -1,6 +1,7 @@
 # Weather::GHCN::CacheURI.pm - class for fetching from a URI, with file caching
 
 ## no critic (Documentation::RequirePodAtEnd)
+
 =head1 NAME
 
 Weather::GHCN::CacheURI - URI page fetch with file-based caching
@@ -52,6 +53,9 @@ all filenames are expected to be unique.
 
 =cut
 
+## no critic [ValuesAndExpressions::ProhibitVersionStrings]
+## no critic [TestingAndDebugging::RequireUseWarnings]
+
 use v5.18;  # minimum for Object::Pad
 use Object::Pad 0.66 qw( :experimental(init_expr) );
 
@@ -59,6 +63,7 @@ package Weather::GHCN::CacheURI;
 class   Weather::GHCN::CacheURI;
 
 our $VERSION = 'v0.0.000';
+
 
 use Carp                    qw(carp croak);
 use Const::Fast;
@@ -72,6 +77,7 @@ use LWP::Simple;
 const my $TRUE    => 1;          # perl's usual TRUE
 const my $FALSE   => not $TRUE;  # a dual-var consisting of '' and 0
 const my $EMPTY   => q();
+const my $FSLASH  => q(/);
 const my $ONE_DAY => 24*60*60;   # number of seconds in a day
 
 const my $REFRESH_RE => qr{ \A ( yearly | never | always | \d+ ) \Z }xms;
@@ -227,7 +233,7 @@ method fetch ($uri) {
     carp '*W* no cache directory specified therefore no caching of HTTP queries available'
         if not $_cachedir;
 
-    carp "*W* cache location specified but doesn't exist, therefore no caching of HTTP queries available"
+    carp '*W* cache location specified but doesn\'t exist, therefore no caching of HTTP queries available'
         if $_cachedir and not -d $_cachedir;
 
     if (not $_cachedir or not -d $_cachedir) {
@@ -268,7 +274,7 @@ method load ($uri) {
     if ( defined $file && -f $file ) {
         return _read_file($file);
     } else {
-        return undef;
+        return;
     }
 }
 
@@ -292,7 +298,7 @@ files can be used for unit testing on multiple platforms.
 
 method store ($uri, $content) {
 
-    croak "*E* cache directory doesn't exist: " . $_cachedir
+    croak '*E* cache directory doesn\'t exist: ' . $_cachedir
         unless -d $_cachedir;
 
     my $store_file = $self->_path_to_key($uri);
@@ -316,8 +322,8 @@ Remove the cache file associated with this URI.
 
 method remove ($uri) {
     my $file = $self->_path_to_key($uri)
-        or return undef;
-    unlink($file);
+        or return;
+    unlink $file;
 }
 
 
@@ -338,7 +344,7 @@ method _fetch_refresh_always ($uri) {
     my $key = $self->_uri_to_key($uri);
     my $file = $self->_path_to_key($key);
 
-    my $st = stat($file);
+    my $st = stat $file;
 
     # if we have a cached file, check to see if the page is newer
     if ($st) {
@@ -372,7 +378,7 @@ method _fetch_refresh_n_days ($uri, $cutoff_mtime) {
     my $key = $self->_uri_to_key($uri);
     my $file = $self->_path_to_key($key);
 
-    my $st = stat($file);
+    my $st = stat $file;
 
     if ($st and $st->mtime >= $cutoff_mtime) {
         # the cached file we have is at or new than the cutoff, so we'll use it
@@ -408,7 +414,7 @@ method _fetch_without_cache ($uri) {
 }
 
 method _uri_to_key ($uri) {
-    my @parts = split '/', $uri;
+    my @parts = split m{ $FSLASH }xms, $uri;
     my $key = $parts[-1];  # use the last part as the key
 
     # this transformation is for testing using CPAN pages and is not
@@ -419,7 +425,7 @@ method _uri_to_key ($uri) {
 }
 
 method _path_to_key ($uri) {
-    return undef if !defined($uri);
+    return if not defined $uri;
 
     my $key = $self->_uri_to_key( $uri );
 
