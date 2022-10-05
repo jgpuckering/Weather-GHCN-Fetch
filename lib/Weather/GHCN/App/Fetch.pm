@@ -90,6 +90,7 @@ use Const::Fast;
 use English         qw( -no_match_vars );
 
 # cpan modules
+use LWP::Simple;
 use Path::Tiny;
 use Text::Abbrev;
 
@@ -234,7 +235,10 @@ sub run ($progname, $argv_aref) {
 
     # launch the default browser with the NOAA Daily readme.txt file content
     if ( $Opt_readme ) {
-        system 'start https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/readme.txt';
+        my $readme_uri = 'https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/readme.txt';
+        say 'Source: ', $readme_uri;
+        say $EMPTY;
+        getprint $readme_uri;
         exit;
     }
 
