@@ -68,9 +68,9 @@ const my $FALSE  => not $TRUE;  # a dual-var consisting of '' and 0
 const my $EMPTY  => '';
 const my $NL     => qq(\n);
 
-const my $PROFILE => path($Bin)->child('ghcn_fetch.yaml');
+const my $PROFILE => path($Bin)->child('ghcn_fetch.yaml')->stringify;
 
-my $Cachedir = path($Bin,'ghcn_cache');
+my $Cachedir = path($Bin,'ghcn_cache')->stringify;
 
 if (not -d $Cachedir) {
     BAIL_OUT "*E* cached folder is missing";
