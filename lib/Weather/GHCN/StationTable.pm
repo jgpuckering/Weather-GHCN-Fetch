@@ -1129,6 +1129,9 @@ method load_stations () {
 
     $_tstats->start('Parse_stn');
 
+    my $is_stnid_filter = keys $_stnid_filter_href->%*
+        if $_stnid_filter_href;
+
     my %stnidx;
 
     # Scan the station table
@@ -1145,7 +1148,7 @@ method load_stations () {
         ## no critic [ProhibitMagicNumbers]
         my $id = substr $line, 0, 11;
 
-        next if $_stnid_filter_href and $_stnid_filter_href->%* and not $_stnid_filter_href->{$id};
+        next if $is_stnid_filter and not $_stnid_filter_href->{$id};
 
         my $lat   = 0 + substr $line, 12, 8;    # coerce to number
         my $long  = 0 + substr $line, 21, 9;    # coerce to number
@@ -1159,27 +1162,29 @@ method load_stations () {
         my $country = substr $id, 0, 2;
         $name =~ s{ \s+ \Z }{}xms;
 
-        ## use critic [ProhibitMagicNumbers]
-
-        ## no critic [RequireExtendedFormatting]
-        my $opt_country = $Opt->country;
-        next if $Opt->country and $country !~ m{\A$opt_country}msi;
-
-        my $opt_state = $Opt->state;
-        next if $Opt->state and $state !~ m{\A$opt_state}msi;
-
-        ## use critic [RequireExtendedFormatting]
-        next if $Opt->location and not _match_location($id, $name, $Opt->location);
-
-        if ( $Opt->gps ) {
-            my ($opt_lat, $opt_long) = split m{[,;\s]}xms, $Opt->gps;
-            my $distance = _gis_distance($opt_lat, $opt_long, $lat, $long);
-            next if $distance > $Opt->radius;
-        }
-
         my $gsn = $gsn_flag eq 'GSN' ? 'GSN' : $EMPTY;
 
-        next if $Opt->gsn and not $gsn;
+        ## use critic [ProhibitMagicNumbers]
+
+        if (not $is_stnid_filter) {
+            ## no critic [RequireExtendedFormatting]
+            my $opt_country = $Opt->country;
+            next if $Opt->country and $country !~ m{\A$opt_country}msi;
+
+            my $opt_state = $Opt->state;
+            next if $Opt->state and $state !~ m{\A$opt_state}msi;
+
+            ## use critic [RequireExtendedFormatting]
+            next if $Opt->location and not _match_location($id, $name, $Opt->location);
+
+            if ( $Opt->gps ) {
+                my ($opt_lat, $opt_long) = split m{[,;\s]}xms, $Opt->gps;
+                my $distance = _gis_distance($opt_lat, $opt_long, $lat, $long);
+                next if $distance > $Opt->radius;
+            }
+
+            next if $Opt->gsn and not $gsn;
+        }
 
         $_station{$id} = Weather::GHCN::Station->new(
             id      => $id,
