@@ -200,7 +200,7 @@ sub run ($progname, $argv_aref) {
                 ($ii == $#ARGV)         # a lone -o at the end
             or                          # a -o followed by an option
                 ($ii < $#ARGV - 1 and
-                 $ARGV[$ii+1] =~ m{ /A [-]}xms);
+                 $ARGV[$ii+1] =~ m{ /A [-] }xms);
     }
 
     # record the number of command line arguments before they are removed by GetOptions
@@ -224,13 +224,13 @@ sub run ($progname, $argv_aref) {
     GetOptions( %script_args );
 
     if ( $Opt_help ) {
-        pod2usage(-verbose => 2);
-        exit;
+        pod2usage(-verbose => 2, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl');
+        return;
     }
 
     if ( $Opt_usage ) {
-        pod2usage(1);
-        exit;
+        pod2usage(-verbose => 1, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl');
+        return;
     }
 
     # launch the default browser with the NOAA Daily readme.txt file content
@@ -239,7 +239,7 @@ sub run ($progname, $argv_aref) {
         say 'Source: ', $readme_uri;
         say $EMPTY;
         getprint $readme_uri;
-        exit;
+        return;
     }
 
     # Default to -gui if no command line arguments were provided and
@@ -249,6 +249,7 @@ sub run ($progname, $argv_aref) {
     # know if *STDIN is pointing at the terminal so we suppress the
     # perlcritic warning.
     ## no critic [ProhibitInteractiveTest]
+    # uncoverable branch true
     $Opt_gui = 1 if $USE_TK and $argv_count == 0 and -t *STDIN;
 
     my $user_opt_href = get_user_options($Opt_file);
@@ -373,7 +374,7 @@ sub run ($progname, $argv_aref) {
 
     if ( $Opt->performance ) {
         say $EMPTY;
-        say sprintf 'Timing statistics (ms)%s:', $Opt->performance ? ' and memory [bytes]' : $EMPTY;
+        say sprintf 'Timing statistics (ms) and memory [bytes]';
         say $ghcn->get_timing_stats;
 
         say $EMPTY;
@@ -435,7 +436,7 @@ sub get_user_options_no_tk ( $optfile=undef ) {
 
         ## no critic [ProhibitStringyEval]
         ## no critic [RequireCheckingReturnValueOfEval]
-        eval $saved_opt_perlsrc;    
+        eval $saved_opt_perlsrc;
 
         return $loadoptions;
     }
@@ -568,6 +569,7 @@ calling:
 
 sub valid_refresh_option ($refresh, $opttable_aref) {
     my $choices_href = Weather::GHCN::Options->get_option_choices;
+    # we only validate the non-numeric options
     return $TRUE if $refresh =~ m{ \A \d+ \Z }xms;
     return $choices_href->{'refresh'}->{ lc $refresh };
 }
@@ -584,10 +586,11 @@ an unabbreviated refresh option.
 =cut
 
 sub deabbrev_refresh_option ($refresh) {
-        return $refresh if $refresh =~ m{ \A \d+ \Z }xms;
-        my %r_abbrev = abbrev( qw(yearly never always) );
-        my $deabbreved = $r_abbrev{ lc $refresh };
-        return $deabbreved;
+    # we only deabbreviate the non-numeric options
+    return $refresh if $refresh =~ m{ \A \d+ \Z }xms;
+    my %r_abbrev = abbrev( qw(yearly never always) );
+    my $deabbreved = $r_abbrev{ lc $refresh };
+    return $deabbreved;
 }
 
 =head1 AUTHOR
