@@ -66,8 +66,11 @@ my $stderr;
 my @args;
 
 subtest 'deabbrev' => sub {
-    is Weather::GHCN::App::Fetch::deabbrev_report_type('da'), 'daily', 'deabbrev_report_type';
-    is Weather::GHCN::App::Fetch::deabbrev_refresh_option('y'), 'yearly', 'deabbrev_refresh_option';
+    my $ro = Weather::GHCN::Options->deabbrev_refresh_option('y');
+    is $ro, 'yearly', 'deabbrev_refresh_option';
+
+    my $rt = Weather::GHCN::Options->deabbrev_report_type('da');
+    is $rt, 'daily', 'deabbrev_report_type';
 };
 
 subtest 'get_user_options (_no_tk and _tk)' => sub {
@@ -89,11 +92,13 @@ subtest 'option validation' => sub {
     my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
 
     @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
-    ok  Weather::GHCN::App::Fetch::valid_report_type('detail',\@opttable),  'valid_report_type - detail valid';
-    ok !Weather::GHCN::App::Fetch::valid_report_type('xxx',\@opttable),     'valid_report_type - xxx invalid';
+    my $valid_rt = Weather::GHCN::Options->valid_report_type('detail',\@opttable);
+    ok $valid_rt,  'valid_report_type - detail valid';
+    ok !Weather::GHCN::Options->valid_report_type('xxx',\@opttable),     'valid_report_type - xxx invalid';
 
-    ok  Weather::GHCN::App::Fetch::valid_refresh_option('never',\@opttable),'valid_refresh_option - never valid';
-    ok !Weather::GHCN::App::Fetch::valid_refresh_option('xxx',\@opttable),  'valid_refresh_option - xxx invalid';
+    my $ro = Weather::GHCN::Options->valid_refresh_option('never',\@opttable);
+    ok  $ro,'valid_refresh_option - never valid';
+    ok !Weather::GHCN::Options->valid_refresh_option('xxx',\@opttable),  'valid_refresh_option - xxx invalid';
 };
 
 subtest 'output to clipboard' => sub {

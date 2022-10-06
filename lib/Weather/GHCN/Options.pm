@@ -380,6 +380,75 @@ method get_option_defaults :common () {
     return \%defaults;
 }
 
+=head2 valid_report_type ($rt, \@opttable)
+
+This function is used to validate the report type.  Valid values are
+defined in the built-in Tk options table, which can be obtained by
+calling:
+
+    my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
+
+=cut
+
+method valid_report_type :common ($rt, $opttable_aref) {
+    my $choices_href = Weather::GHCN::Options->get_option_choices;
+    return $choices_href->{'report'}->{ lc $rt };
+}
+
+=head2 deabbrev_report_type ($rt)
+
+The report types supported by the -report option can be abbrevated,
+so long as the abbrevation is unambiquous.  For example, 'daily' can
+be abbreviated to 'dail', 'dai', or 'da', but not 'd' because 'detail'
+is also a valid report type and 'd' would not disambiguate the two.
+
+This function takes a (possibly abbreviated) report type and returns
+an unabbreviated report type.
+
+=cut
+
+method deabbrev_report_type :common ($rt) {
+        my %r_abbrev = abbrev( qw(detail daily monthly yearly) );
+        my $deabbreved = $r_abbrev{ lc $rt };
+        return $deabbreved;
+}
+
+=head2 valid_refresh_option ($refresh, \@opttable)
+
+This function is used to validate the refresh option.  Valid values are
+defined in the built-in Tk options table, which can be obtained by
+calling:
+
+    my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
+
+=cut
+
+method valid_refresh_option :common ($refresh, $opttable_aref) {
+    my $choices_href = Weather::GHCN::Options->get_option_choices;
+    # we only validate the non-numeric options
+    return $TRUE if $refresh =~ m{ \A \d+ \Z }xms;
+    return $choices_href->{'refresh'}->{ lc $refresh };
+}
+
+=head2 deabbrev_refresh_option ($refresh)
+
+The refresh option values can be abbrevated, so long as the abbrevation
+is unambiquous.  For example, 'yearly' can
+be abbreviated to 'y', 'ye', 'yea', etc.
+
+This function takes a (possibly abbreviated) refresh option and returns
+an unabbreviated refresh option.
+
+=cut
+
+method deabbrev_refresh_option :common ($refresh) {
+    # we only deabbreviate the non-numeric options
+    return $refresh if $refresh =~ m{ \A \d+ \Z }xms;
+    my %r_abbrev = abbrev( qw(yearly never always) );
+    my $deabbreved = $r_abbrev{ lc $refresh };
+    return $deabbreved;
+}
+
 
 ######################################################################
 =head1 INSTANCE METHODS

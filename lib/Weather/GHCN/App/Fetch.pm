@@ -180,7 +180,7 @@ sub run ($progname, $argv_aref) {
     my $report_type;
     if (@ARGV > 0 and $ARGV[0] =~ m{ \A [^-][[:alpha:]]+ \b }xms ) {
         my $rt_arg = shift @ARGV;
-        my $rt = deabbrev_report_type( $rt_arg );
+        my $rt = Weather::GHCN::Options->deabbrev_report_type( $rt_arg );
         $report_type = $rt // $rt_arg;
     }
 
@@ -495,12 +495,12 @@ sub get_user_options_tk ( $optfile=undef ) {
 
     if ( $optobj->{options}->{report} ) {
         my %report_abbrev = abbrev( qw(id daily monthly yearly) );
-        my $rt = deabbrev_report_type( $optobj->{options}->{report} );
+        my $rt = Weather::GHCN::Options->deabbrev_report_type( $optobj->{options}->{report} );
         $optobj->{options}->{report} = $rt
             if $rt;
     }
     die '*E* invalid report option: ' . $optobj->{options}->{report} . "\n"
-        unless valid_report_type( $optobj->{options}->{report}, \@opttable );
+        unless Weather::GHCN::Options->valid_report_type( $optobj->{options}->{report}, \@opttable );
 
     $optobj->process_options;  # process callbacks, check restrictions ...
 
@@ -522,75 +522,6 @@ sub get_user_options_tk ( $optfile=undef ) {
     }
 
     return \%opt;
-}
-
-=head2 valid_report_type ($rt, \@opttable)
-
-This function is used to validate the report type.  Valid values are
-defined in the built-in Tk options table, which can be obtained by
-calling:
-
-    my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
-
-=cut
-
-sub valid_report_type ($rt, $opttable_aref) {
-    my $choices_href = Weather::GHCN::Options->get_option_choices;
-    return $choices_href->{'report'}->{ lc $rt };
-}
-
-=head2 deabbrev_report_type ($rt)
-
-The report types supported by the -report option can be abbrevated,
-so long as the abbrevation is unambiquous.  For example, 'daily' can
-be abbreviated to 'dail', 'dai', or 'da', but not 'd' because 'detail'
-is also a valid report type and 'd' would not disambiguate the two.
-
-This function takes a (possibly abbreviated) report type and returns
-an unabbreviated report type.
-
-=cut
-
-sub deabbrev_report_type ($rt) {
-        my %r_abbrev = abbrev( qw(detail daily monthly yearly) );
-        my $deabbreved = $r_abbrev{ lc $rt };
-        return $deabbreved;
-}
-
-=head2 valid_refresh_option ($refresh, \@opttable)
-
-This function is used to validate the refresh option.  Valid values are
-defined in the built-in Tk options table, which can be obtained by
-calling:
-
-    my @opttable = ( Weather::GHCN::Options->get_tk_options_table() );
-
-=cut
-
-sub valid_refresh_option ($refresh, $opttable_aref) {
-    my $choices_href = Weather::GHCN::Options->get_option_choices;
-    # we only validate the non-numeric options
-    return $TRUE if $refresh =~ m{ \A \d+ \Z }xms;
-    return $choices_href->{'refresh'}->{ lc $refresh };
-}
-
-=head2 deabbrev_refresh_option ($refresh)
-
-The refresh option values can be abbrevated, so long as the abbrevation
-is unambiquous.  For example, 'yearly' can
-be abbreviated to 'y', 'ye', 'yea', etc.
-
-This function takes a (possibly abbreviated) refresh option and returns
-an unabbreviated refresh option.
-
-=cut
-
-sub deabbrev_refresh_option ($refresh) {
-    # we only deabbreviate the non-numeric options
-    return $refresh if $refresh =~ m{ \A \d+ \Z }xms;
-    my %r_abbrev = abbrev( qw(yearly never always) );
-    my $deabbreved = $r_abbrev{ lc $refresh };
-    return $deabbreved;
 }
 
 =head1 AUTHOR
