@@ -42,7 +42,7 @@ ghcn_fetch.pl - Fetch station and weather data from the NOAA GHCN repository
 
 =head1 SYNOPSIS
 
-    ghcn_fetch.pl [-gui] [-optfile <filespec>]
+    ghcn_fetch.pl [-gui] [-savegui <filespec>]
 
     ghcn_fetch.pl [<report_type>]
             [-country <str>] [-state <str>] [-location <str>] [-gsn]
@@ -52,7 +52,7 @@ ghcn_fetch.pl - Fetch station and weather data from the NOAA GHCN repository
             [-anomalies] [-baseline <str>] [-precip] [-tavg] [-nogaps]
             [-kml <filespec> [-color <str>] ]
             [-report <report_type>]
-            [-dataonly] [-performance] [-verbose] [-outclip|-o]
+            [-dataonly] [-performance] [-verbose] [-outclip]
             [-cachedir <directory>] [-refresh <str>] 
             [-profile <filespec>] 
             
@@ -409,11 +409,12 @@ stderr.
 Launch a graphic user interface that can be used to set options.
 Not available unless modules Tk and Tk::Getopt are installed.
 
-=item -optfile <filespec>
+=item -savegui <filespec>
 
-Designate a file to be used to save or load options.
+Designate a file to be used to save load options, or from which to
+load options that were previously saved from the GUI.
 
-=item -outclip or -o
+=item -outclip
 
 Send output to the Windows clipboard.  (Windows only)
 
