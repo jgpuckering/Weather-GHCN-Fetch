@@ -121,7 +121,7 @@ our $USE_TK      = can_load( modules => $TK_MODULES );
 my $Opt;    # options object, with property accessors for each user option
 
 # options that relate to script execution, not GHCN processing and output
-my $Opt_file;       # file in which to save options from GUI dialog
+my $Opt_savegui;    # file in which to save options from GUI dialog
 my $Opt_gui;        # launch the GUI dialog
 my $Opt_help;       # display POD documentation
 my $Opt_readme;     # launch a browser displaying the GHCN readme file
@@ -184,32 +184,13 @@ sub run ($progname, $argv_aref) {
         $report_type = $rt // $rt_arg;
     }
 
-    # The -optfile option, which is preprocessed by GetOptions before
-    # we call Tk::Getopt, has an overlapping abbreviation with -outclip.
-    # To avoid GetOptions from stripping -o from @ARGV, we disambiguate
-    # -o by changing it to -outclip.  This means that -optfile can
-    # only by abbreviated down to -op.
-    # Note: normally we shouldn't be changing @ARGV but in this case
-    # we do want to.
-
-    ## no critic [ProhibitCStyleForLoops]
-    ## no critic [RequireLocalizedPunctuationVars]
-    for (my $ii=0; $ii < @ARGV; $ii++) {
-        $ARGV[$ii] = '-outclip'
-            if $ARGV[$ii] eq '-o' and
-                ($ii == $#ARGV)         # a lone -o at the end
-            or                          # a -o followed by an option
-                ($ii < $#ARGV - 1 and
-                 $ARGV[$ii+1] =~ m{ /A [-] }xms);
-    }
-
     # record the number of command line arguments before they are removed by GetOptions
     my $argv_count = @ARGV;
 
     my %script_args = (
         'help'      => \$Opt_help,
         'usage|?'   => \$Opt_usage,
-        'optfile:s' => \$Opt_file,      # file for options load/save
+        'savegui:s' => \$Opt_savegui,   # file for options load/save
         'readme'    => \$Opt_readme,
     );
 
@@ -248,11 +229,12 @@ sub run ($progname, $argv_aref) {
     # because it better deals with ARGV magic; but here we just need to
     # know if *STDIN is pointing at the terminal so we suppress the
     # perlcritic warning.
+
     ## no critic [ProhibitInteractiveTest]
     # uncoverable branch true
     $Opt_gui = 1 if $USE_TK and $argv_count == 0 and -t *STDIN;
 
-    my $user_opt_href = get_user_options($Opt_file);
+    my $user_opt_href = get_user_options($Opt_savegui);
 
     $user_opt_href->{report} = $report_type
         if defined $report_type;
