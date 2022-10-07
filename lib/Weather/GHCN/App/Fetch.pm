@@ -481,27 +481,6 @@ sub get_user_options_tk ( $optfile=undef ) {
 
     $optobj->get_options;      # command line
 
-    # Because Tk::Getopt doesn't support option abbreviations for choice
-    # lists -- there's no need for the gui since choices are provided in a
-    # drop list -- we run into a problem when using Tk:Getopt without the
-    # gui.  In that case, an abbrevation for a -report option will be caught
-    # during process_options call (just below), before our call to
-    # TableStation::set_options can expand the abbrevation by calling
-    # Options::validate. So, for the sake of this
-    # script we do an abbrevation substition right here, and then call our own
-    # validate_report_type sub which gets the valid report types from the
-    # options table.  We do our own error report too, because Tk::Getopt
-    # reports choices as a list of ARRAY(<address>) rather than as values.
-
-    if ( $optobj->{options}->{report} ) {
-        my %report_abbrev = abbrev( qw(id daily monthly yearly) );
-        my $rt = Weather::GHCN::Options->deabbrev_report_type( $optobj->{options}->{report} );
-        $optobj->{options}->{report} = $rt
-            if $rt;
-    }
-    die '*E* invalid report option: ' . $optobj->{options}->{report} . "\n"
-        unless Weather::GHCN::Options->valid_report_type( $optobj->{options}->{report}, \@opttable );
-
     $optobj->process_options;  # process callbacks, check restrictions ...
 
     if ($Opt_gui) {
