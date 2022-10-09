@@ -167,9 +167,6 @@ sub run ($progname, $argv_aref) {
 
     local @ARGV = $argv_aref->@*;
 
-    warn '*W* -gui option unavailable -- try installing Tk and Tk::GetOptions'
-        if not $USE_TK;
-
     my $ghcn = Weather::GHCN::StationTable->new;
 
     $ghcn->tstats->start('_Overall');
@@ -188,21 +185,21 @@ sub run ($progname, $argv_aref) {
     my $argv_count = @ARGV;
 
     my %script_args = (
+        'gui'       => \$Opt_gui,
+        'outclip'   => \$Opt_outclip,
         'help'      => \$Opt_help,
         'usage|?'   => \$Opt_usage,
         'savegui:s' => \$Opt_savegui,   # file for options load/save
         'readme'    => \$Opt_readme,
     );
 
-    $script_args{'gui'} = \$Opt_gui
-        if $USE_TK;
-
-    $script_args{'outclip|o'} = \$Opt_outclip
-        if $USE_WINCLIP;
-
     # parse out the script options into $Opt_ fields, letting the rest
     # pass through to get_user_options below
     GetOptions( %script_args );
+    
+    if ($Opt_outclip and not $USE_WINCLIP) {
+        die "*E* -outclip not available (needs Win32::Clipboard)\n";
+    }
 
     if ( $Opt_help ) {
         pod2usage(-verbose => 2, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl');
@@ -443,8 +440,7 @@ B<Tk::GetOptions> can use to store or load options.
 sub get_user_options_tk ( $optfile=undef ) {
 
     if (not $USE_TK) {
-        warn '*E* Tk or Tk::Getopt not installed';
-        return;
+        die '*E* -gui option unavailable -- try installing Tk and Tk::Getopt';
     }
 
     my %opt;
