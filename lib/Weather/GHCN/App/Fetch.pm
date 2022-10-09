@@ -202,12 +202,12 @@ sub run ($progname, $argv_aref) {
     }
 
     if ( $Opt_help ) {
-        pod2usage(-verbose => 2, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl');
+        pod2usage(-verbose => 2, -exitval => 'NOEXIT', 'ghcn_fetch.pl');
         return;
     }
 
     if ( $Opt_usage ) {
-        pod2usage(-verbose => 1, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl');
+        pod2usage(-verbose => 1, -exitval => 'NOEXIT', 'ghcn_fetch.pl');
         return;
     }
 
