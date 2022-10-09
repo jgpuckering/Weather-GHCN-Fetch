@@ -3,6 +3,7 @@ Revision history for Perl module libary Windows-GHCN-Fetch
 v0.0.005       2022-10-09
   - always allow -gui, even when Tk/Tk::Getopt is not installed, but die if it's requested
   - always allow -outclip, even when Win32::Clipboard is not installed, but die if it's requested
+  - fix -help/-usage/-?: pod2usage was passed a list of options instead of a hash
 
 v0.0.004       2022-10-07
   - fixes for bugs preventing tests from succeeding on Linux and Win32-x86
