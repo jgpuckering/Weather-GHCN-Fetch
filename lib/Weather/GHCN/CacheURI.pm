@@ -67,7 +67,7 @@ our $VERSION = 'v0.0.000';
 
 use Carp                    qw(carp croak);
 use Const::Fast;
-use Fcntl qw( :DEFAULT );
+use Fcntl                   qw( :DEFAULT );
 use File::stat;
 use Path::Tiny;
 use Try::Tiny;
