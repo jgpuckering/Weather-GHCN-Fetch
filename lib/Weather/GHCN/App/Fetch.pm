@@ -90,6 +90,7 @@ use Const::Fast;
 use English         qw( -no_match_vars );
 
 # cpan modules
+use FindBin         qw($Bin);
 use LWP::Simple;
 use Path::Tiny;
 use Text::Abbrev;
@@ -201,12 +202,14 @@ sub run ($progname, $argv_aref) {
         die "*E* -outclip not available (needs Win32::Clipboard)\n";
     }
 
+    my $ghcn_fetch_pl = path($Bin, '..', 'bin', 'ghcn_fetch.pl')->absolute->stringify;
+
     if ( $Opt_help ) {
-        pod2usage( { -verbose => 2, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl' } );
+        pod2usage( { -verbose => 2, -exitval => 'NOEXIT', -input => $ghcn_fetch_pl } );
         return;
     }
     if ( $Opt_usage ) {
-        pod2usage( { -verbose => 1, -exitval => 'NOEXIT', -input => 'ghcn_fetch.pl' } );
+        pod2usage( { -verbose => 1, -exitval => 'NOEXIT', -input => $ghcn_fetch_pl } );
         return;
     }
 
