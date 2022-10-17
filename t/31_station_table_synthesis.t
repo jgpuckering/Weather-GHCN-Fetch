@@ -73,7 +73,7 @@ const my $PROFILE => path($Bin)->child('ghcn_fetch.yaml')->stringify;
 my $Cachedir = path($Bin,'ghcn_cache')->stringify;
 
 if (not -d $Cachedir) {
-    BAIL_OUT "*E* cached folder is missing";
+    BAIL_OUT '*E* cache folder is missing: ' . $Cachedir;
 }
 
 my $Refresh;       # control caching
