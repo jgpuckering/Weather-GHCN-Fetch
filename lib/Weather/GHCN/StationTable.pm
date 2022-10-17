@@ -2489,7 +2489,7 @@ sub _memsize ( $ref, $opt_performance ) {
 =head1 OPTIONS
 
 StationTable supports almost all the options documented in
-B<ghcn_fetch.pl>.  The only options not supported are ones that
+B<ghcn_fetch>.  The only options not supported are ones that
 are listed in the Command-Line Only Options section of the POD, namely:
 -help, -usage, -readme, -gui, -optfile, and -outclip.
 
@@ -2499,7 +2499,7 @@ Options can also be defined in a file (called a B<profile>) that will
 be loaded at runtime and merged with the options passed to B<set_options>.
 
 Options passed to B<set_options()> must be defined as a perl hash
-structure. See B<ghcn_fetch.pl -help> for a list of all options in
+structure. See B<ghcn_fetch -help> for a list of all options in
 Getopts::Long format.  Simply translate the option to a hash
 key/value pair.  For example, B<-report detail> becomes B<report =>
 'detail'>.

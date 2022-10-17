@@ -4737,5 +4737,5 @@ Options:
 	  1 do not contact the server, just use what is cached
 
 Script:
-	C:\Users\jgpuckering\MyScripts\MyPerl\bin\ghcn_fetch.pl
+	C:\Users\jgpuckering\MyScripts\MyPerl\bin\ghcn_fetch
 	Last modified 2022-09-07 14:05:06

@@ -12,7 +12,7 @@ Weather::GHCN::App::Fetch - Fetch station and weather data from the NOAA GHCN re
 
     Weather::GHCN::App::Fetch->run( \@ARGV );
 
-See ghcn_fetch.pl -help for details.
+See ghcn_fetch -help for details.
 
 =cut
 
@@ -202,7 +202,7 @@ sub run ($progname, $argv_aref) {
         die "*E* -outclip not available (needs Win32::Clipboard)\n";
     }
 
-    my $ghcn_fetch_pl = path($Bin, '..', 'bin', 'ghcn_fetch.pl')->absolute->stringify;
+    my $ghcn_fetch_pl = path($Bin, '..', 'bin', 'ghcn_fetch')->absolute->stringify;
 
     if ( $Opt_help ) {
         pod2usage( { -verbose => 2, -exitval => 'NOEXIT', -input => $ghcn_fetch_pl } );

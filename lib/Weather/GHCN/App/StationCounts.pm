@@ -1,4 +1,4 @@
-# ghcn_station_counts.pl - Count stations in ghcn_fetch.pl station output
+# ghcn_station_counts - Count stations in ghcn_fetch station output
 
 ## no critic (Documentation::RequirePodAtEnd)
 
@@ -12,7 +12,7 @@ Weather::GHCN::App::StationCounts - Count stations in Weather::GHCN::Fetch stati
 
     Weather::GHCN::App::StationCounts->run( \@ARGV );
 
-See ghcn_station_counts.pl -help for details.
+See ghcn_station_counts -help for details.
 
 =cut
 
@@ -109,7 +109,7 @@ then call:
 
     Weather::GHCN::App::StationCounts->run( \@ARGV );
 
-See ghcn_station_counts.pl -help for details.
+See ghcn_station_counts -help for details.
 
 =cut
 

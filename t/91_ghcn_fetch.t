@@ -51,7 +51,7 @@ BAIL_OUT "\n*E* test profile not found or unreadable: " . $PROFILE
     if not -r $PROFILE;
 
 
-my $ghcn_fetch = path($Bin, '../bin', 'ghcn_fetch.pl')->stringify;
+my $ghcn_fetch = path($Bin, '../bin', 'ghcn_fetch')->stringify;
 
 my @cmd = (
     'perl',
