@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 # ghcn_fetch.pl - Fetch NOAA GHCN daily data and output as TSV
 
 # Testing notes:
@@ -50,14 +51,18 @@ ghcn_fetch.pl - Fetch station and weather data from the NOAA GHCN repository
             [-range <str>] [-active <str> [-partial]] [-quality <pct>]
             [-fmonth <str>] [-fday <str>]
             [-anomalies] [-baseline <str>] [-precip] [-tavg] [-nogaps]
-            [-kml <filespec> [-color <str>] ]
             [-report <report_type>]
-            [-dataonly] [-performance] [-verbose] [-outclip]
+            [-dataonly] [-kmlcolor <str>] ] [-performance] [-verbose] [-outclip]
             [-cachedir <directory>] [-refresh <str>] 
             [-profile <filespec>] 
             
 
-        <report_type> ::= detail | daily | monthly | weekly | ""
+        <report_type> ::= <station> | <weather>
+        
+        <station> ::= kml | url | curl | ""        
+        
+        <weather> ::= detail | daily | monthly | weekly
+                          
 
     ghcn_fetch.pl -readme
 
@@ -73,13 +78,11 @@ by country, state, location name, year range, station active year
 range, etc.  When no report type is provided, or -report is an empty
 string, the output is simply a list of the selected stations.
 
-If report type 'daily', 'monthly' or 'yearly' is given, then the
-pages for the selected stations are scanned and the data from them
-aggregated and output as one row per designated period.  This is
-followed by the station list.
-
-If report type 'detail' is given, then the daily data for each selected
-station id is reported, followed by the station list.
+There are two broad types of reports:  station reports and weather data
+reports.  The former provides information about the selected stations.
+The latter provides actual weather daily weather data for a range of
+time for the selected stations -- as well as station information (unless
+option -dataonly is provided).
 
 The report type can be abbreviated so long as it is unambiguous; e.g. 
 da or dai for daily; de for detail.  
@@ -104,15 +107,7 @@ user-friendly way to set options, and to save and reload them (if
 Getoptions::Long is used, so either - or -- may be used.  Parameter
 names may be abbreviated, so long as they remains unambiguous.
 
-
-=head2 Report Types
-
-Data obtained from the GHCN database can be reported at various
-levels of aggregation using the B<report> option.  The string value
-for B<report> specifies the type and level of aggregation.
-Abbrevations are permitted.  This value can be given as the very
-first argument on the command line, or anywhere on the command line
-if preceded by B<-report>.
+=head2 Station Report Types
 
 =over 4
 
@@ -122,6 +117,47 @@ This is the default option when no report option is provided, or when
 the option is an empty string.  It generates a list of the stations
 which match the criteria provided (location, geo coordinates, ranges
 etc.)  No actual weather data is accessed; only station data.
+
+=item -report curl
+
+For the selected stations, print to stdout the commands necessary to 
+fetch the daily page file from the NOAA repository using B<curl -K 
+filename>. You'll need to redirect stdout to save the output in 
+B<filename>.
+
+This option is convenient in cases where you might want to prefetch
+station daily weather pages into the cache you've designated with the
+B<cachdir> option.  You'll need to B<cd> into that directory so the
+files download by B<curl> end up in the cache.
+
+=item -report kml
+
+For the selected stations, print to stdout the KML specifications that
+can be imported into Google Maps (or similar software) as pushpins.
+The -kmlcolor option can be used to designate a different color.
+
+=item -report id
+
+For the selected stations, print to stdout the id's of the stations.
+If saved to a file, this list can be used as a input filter to 
+B<ghcn_fetch.pl> using stdin.
+
+=item -report stn
+
+For the selected stations, print to stdout the station information
+as a tab-separated table (including header).  This form is suitable
+for importing into a spreadsheet.
+
+=item -report url
+
+For the selected stations, print to stdout the URL's for the 
+corresponding daily weather pages.
+
+=back
+
+=head2 Weather Report Types
+
+=over 4
 
 =item -report daily
 
@@ -219,7 +255,11 @@ comma).  If a space is used, the string must be enclosed in quotes.
 
 Specify the radius, in kilometers, to be used for the -gps option.
 
-=item Date Filters
+=back
+
+=head2 Date Filters
+
+=over 4
 
 =item -range <str>
 
@@ -311,25 +351,6 @@ chart and a distorted picture across time.
 
 =back
 
-=head2 Kml Options
-
-=over 4
-
-=item -kml <filespec>
-
-Output the coordinates of the selected stations as a KML file, for
-import into Google Earth as placemarks.  The active range of each
-station will be included as timespans so that you can view the
-placemarks across time.
-
-=item -color <color> (or -colour)
-
-Color of the KLM placemark pushpins.  Acceptable values are red,
-green, blue, azure, purple, yellow and white.  May be abbreviated
-down to one letter. Default is red.
-
-=back
-
 =head2 Misc Options
 
 =over 4
@@ -346,6 +367,12 @@ using the same station filtering criteria.
 
 Print only the data table.  Other information, including notes, lists
 of stations kept and rejected, and statistics are suppressed.
+
+=item -kmlcolor <color>
+
+Color of the KLM placemark pushpins.  Acceptable values are red,
+green, blue, azure, purple, yellow and white.  May be abbreviated
+down to one letter. Default is red.
 
 =item -performance
 
@@ -401,6 +428,9 @@ stderr.
 =back
 
 =head2 Command-Line Only Options
+
+Options documented in this section can be used on the command line,
+but cannot be specified within a profile file.
 
 =over 4
 

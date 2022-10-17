@@ -129,8 +129,8 @@ subtest 'output to clipboard' => sub {
 
 subtest 'kml and color options' => sub {
     my @args = (
-        '-kml',         '',
-        '-color',       'azure',
+        '-report',      'kml',
+        '-kmlcolor',    'azure',
         '-location',    'CA006105976,CA006105978',
         '-refresh',     'never',
         '-profile',     $PROFILE,
@@ -142,18 +142,6 @@ subtest 'kml and color options' => sub {
     };
 
     like $stdout, qr/xml.*kml/ms, 'kml "" to stdout';
-
-    my $tempfile = Path::Tiny->tempfile( TEMPLATE => '91_ghcn_fetch_t_XXXXXX', SUFFIX => '.tmp' );
-
-    $args[1] = $tempfile->stringify;
-
-    ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
-    };
-
-    my $kml = $tempfile->slurp;
-
-    like $kml, qr/xml.*kml/ms, 'kml <file>';
 };
 
 subtest 'station ids from file' => sub {
