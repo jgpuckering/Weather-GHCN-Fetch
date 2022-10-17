@@ -286,6 +286,29 @@ sub run ($progname, $argv_aref) {
         exit if $reply =~ m{ \A ( n | no ) }xmsi;
     }
 
+    if ( $Opt->report eq 'kml' ) {
+        say $ghcn->report_kml;
+        goto WRAP_UP;
+    }
+    elsif ( $Opt->report eq 'url' ) {
+        say $ghcn->report_urls;
+        goto WRAP_UP;
+    }
+    elsif ( $Opt->report eq 'curl' ) {
+        say $ghcn->report_urls( curl => 1 );
+        goto WRAP_UP;
+    }
+    elsif ( $Opt->report eq 'stn' ) {
+        say $ghcn->get_stations();
+        goto WRAP_UP;        
+    }
+    elsif ( $Opt->report eq 'id' ) {
+        my @stn_list = $ghcn->get_stations( list => 1, no_header => 1 );
+        my @id_list = map { $_->[0] } @stn_list;
+        say join $NL, @id_list;
+        goto WRAP_UP;        
+    }
+
     if ($Opt->report) {
         say $ghcn->get_header;
 
@@ -313,15 +336,6 @@ sub run ($progname, $argv_aref) {
 
         say $EMPTY;
         say $ghcn->get_flag_statistics;
-    }
-
-    if ( $Opt->defined('kml') ) {
-        if ($Opt->kml eq $EMPTY) {
-            say $ghcn->export_kml;
-            goto WRAP_UP;
-        } else {
-            $ghcn->export_kml;
-        }
     }
 
     say $EMPTY;

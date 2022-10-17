@@ -58,6 +58,7 @@ const my $NEWLINE => qq(\n);
 
 const my $DEFAULT_PROFILE_FILE  => '~/.ghcn_fetch.yaml';
 const my $ALIAS_NAME_RE => qr{ \A [_]?[[:lower:]]+ \Z }xms;
+const my @REPORT_TYPE_LIST => qw(detail daily monthly yearly url curl kml stn id);
 
 =head1 METHODS
 
@@ -94,6 +95,10 @@ my $Tk_opt_table = [
             [ 'monthly summary',    'monthly' ],
             [ 'daily summary',      'daily' ],
             [ 'detail level',       'detail' ],
+            [ 'station KML',        'kml' ],
+            [ 'station url list',   'url' ],
+            [ 'station curl list',  'curl' ],
+            [ 'station list only',  'stn' ],
         ]
     ],
     ['', '', '-'],
@@ -124,13 +129,8 @@ my $Tk_opt_table = [
     ['tavg',        '!',    undef, label => 'Include TAVG in the results'],
     ['nogaps',      '!',    undef, label => 'Emit extra rows for missing months or days'],
 
-    'KML Output',
-    ['kml',         '=s',   undef, label => 'Export station coordinates to a KML file'],
-    ['color',       '=s',   'red', label => 'Color to use for KML placemarks',
-                                   alias => ['colour'] ],
-    ['label',       '!',    undef, label => 'Label KML placemarks'],
-
-    'Profile and Cache',
+    'Other Options',
+    ['kmlcolor',    '=s',   'red', label => 'Color to use for KML placemarks' ],
     ['profile',     '=s',   $DEFAULT_PROFILE_FILE,
                                    label => 'Profile file location (for option preloading)'], #, nogui => 1],
     ['cachedir',    '=s',   undef, label => 'Directory for cached files'],
@@ -408,7 +408,7 @@ an unabbreviated report type.
 =cut
 
 method deabbrev_report_type :common ($rt) {
-        my %r_abbrev = abbrev( qw(detail daily monthly yearly) );
+        my %r_abbrev = abbrev( @REPORT_TYPE_LIST );
         my $deabbreved = $r_abbrev{ lc $rt };
         return $deabbreved;
 }
@@ -701,24 +701,7 @@ method validate () {
     push @errors, '*E* -gps argument must be decimal lat/long, separated by spaces or punctuation'
         if $_opt_obj->gps and $_opt_obj->gps !~ m{ \A [+-]? \d{1,3} [.] \d+ (?: [[:punct:]] | \s+ ) [+-]? \d{1,3} [.] \d+ \Z }xms;
 
-    #-----------------------------------------------------------------
-    # Maintenance Note
-    #-----------------------------------------------------------------
-    #
-    # GHCN::Fetch uses Tk::Getopt rather than Getopt::Long and as
-    # a result it does it's own validation checking of -report and
-    # -refresh before the validate() method of this module gets called.
-    # Unfortunately, the error message is useless because it fails to
-    # print out the choices correctly.  So, special code was written
-    # in GHCN::Fetch to allow the -report and -refresh options to be
-    # abbreviated, and to validate them, and to issue proper error
-    # messages when they are invalid.
-    #
-    # Consequently, by the time this code is reached, any abbreviation
-    # to $_opt_obj->report (or $_opt_obj->refresh) has already been replaced,
-    # and validation and error reporting has been done done.
-
-    my %report_abbrev = abbrev( qw(detail daily monthly yearly) );
+    my %report_abbrev = abbrev( @REPORT_TYPE_LIST );
 
     my $report = lc $_opt_obj->report;
 
@@ -752,20 +735,17 @@ method validate () {
     my %color_abbrev = abbrev( qw(blue green azure purple red white yellow) );
 
     # uncoverable branch false
-    if ( $_opt_obj->defined('color') ) {
-        my $color = $_opt_obj->color;
-        if ( $color eq $EMPTY ) {
-            push @errors, '*E* invalid -color value ""'
+    if ( $_opt_obj->defined('kmlcolor') ) {
+        my $kmlcolor = $_opt_obj->kmlcolor;
+        if ( $kmlcolor eq $EMPTY ) {
+            push @errors, '*E* invalid -kmlcolor value ""'
         } else {
-            push @errors, '*E* invalid -color value'
-                if not $color_abbrev{ $color };
+            push @errors, '*E* invalid -kmlcolor value'
+                if not $color_abbrev{ $kmlcolor };
         }
-        $_opt_obj->color = $color_abbrev{ $color };
+        $_opt_obj->kmlcolor = $color_abbrev{ $kmlcolor };
     }
 
-
-    push @errors, '*E* -label/-nolabel only allowed if -kml specified'
-        if $_opt_obj->defined('label') and not $_opt_obj->defined('kml');
 
     if ( $_opt_obj->defined('fmonth') ) {
         push @errors, '*E* -fmonth must be a single number or valid range spec (e.g. 1-5,9)'
