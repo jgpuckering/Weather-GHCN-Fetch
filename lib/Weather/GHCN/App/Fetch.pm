@@ -164,7 +164,8 @@ See ghnc_fetch.pl -help for details.
 
 =cut
 
-sub run ($progname, $argv_aref) {
+sub run ($progname, $argv_aref, %args) {
+    $args{'stdin'} //= $TRUE;
 
     local @ARGV = $argv_aref->@*;
 
@@ -258,7 +259,7 @@ sub run ($progname, $argv_aref) {
 
     # get a list of station id's from stdin if it's a pipe or file
     # (but not if stdin is pointing to the terminal)
-    if ( -p *STDIN || -f *STDIN ) {
+    if ( $args{'stdin'} && ( -p *STDIN || -f *STDIN ) ) {
         my $ii;
         my %f;
         while (my $line = <STDIN>) {       ## no critic [ProhibitExplicitStdin]

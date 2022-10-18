@@ -138,7 +138,7 @@ subtest 'kml and color options' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
     };
 
     like $stdout, qr/xml.*kml/ms, 'kml "" to stdout';
@@ -166,7 +166,7 @@ subtest 'station ids from file' => sub {
         or die '*E* cannot open tempfile: ' . $tempfile1;
 
     throws_ok {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $TRUE );
     } qr/no station ids found/, 'no station ids found in stdin';
 
     close *STDIN or warn $!;
@@ -178,7 +178,7 @@ subtest 'station ids from file' => sub {
         or die '*E* cannot open tempfile: ' . $tempfile2;
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $TRUE );
     };
 
     like $stderr, qr/2\s+stations/, 'found 2 stations';
@@ -200,7 +200,7 @@ subtest 'fetch New York station metadata' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
     };
 
     my @result = split "\n", $stdout;
@@ -230,7 +230,7 @@ subtest '-loc cda -report monthly -range 2000-2001 -dataonly' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
     };
 
     like $stdout, qr/Year\s+Month\s+Decade.*?TMAX\s+TMIN.*?\d{4}/ms, 'data found';
@@ -250,7 +250,7 @@ subtest 'fetch daily -loc cda -range 2000-2001 -fmonth 6 -performance' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
     };
 
     like $stdout, qr/Year\s+Month\s+Day.*?TMAX\s+TMIN.*?\d{4}/ms, 'data found';
@@ -271,7 +271,7 @@ subtest 'fetch with unrecognized options' => sub {
     );
 
     throws_ok {
-        Weather::GHCN::App::Fetch->run( \@args );
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
     } qr/unrecognized options: -INVALID_OPTION/ms, 'invalid option';
 };
 
@@ -284,25 +284,25 @@ subtest 'fetch with unrecognized options' => sub {
 subtest 'options readme, usage and help' => sub {
     @args = ('-readme');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args )
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
     };
     like $stdout, qr/Source:/, $args[0];
 
     @args = ( '-usage' );
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args )
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
     };
     like $stdout, qr/Usage:/, $args[0];
 
     @args = ('-?');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args )
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
     };
     like $stdout, qr/Usage:/, $args[0];
 
     @args = ('-help');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args )
+        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
     };
     like $stdout, qr/Fetch station and weather data/, $args[0];
 };
