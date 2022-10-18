@@ -271,7 +271,7 @@ sub run ($progname, $argv_aref) {
         }
         
         if ($ii == 0) {
-            warn '*W* no station ids found in the input';            
+            die '*W* no station ids found in the input';            
         } else {
             $ghcn->stnid_filter_href( \%f );            
         }
