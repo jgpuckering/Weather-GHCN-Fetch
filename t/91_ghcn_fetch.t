@@ -162,18 +162,20 @@ subtest 'station ids from file' => sub {
     );
    
     *STDIN_SAVED = *STDIN;
-    open *STDIN, '<', $tempfile1 or die;
+    open *STDIN, '<', $tempfile1 
+        or die '*E* cannot open tempfile: ' . $tempfile1;
 
     throws_ok {
         Weather::GHCN::App::Fetch->run( \@args );
-    } qr/no station id's found/, 'no stnids found in input';
+    } qr/no station id's found/, 'no station ids found in stdin';
 
     close *STDIN or warn $!;
     *STDIN = *STDIN_SAVED;
 
 
     *STDIN_SAVED = *STDIN;
-    open *STDIN, '<', $tempfile2 or die;
+    open *STDIN, '<', $tempfile2 
+        or die '*E* cannot open tempfile: ' . $tempfile2;
 
     ($stdout, $stderr) = capture {
         Weather::GHCN::App::Fetch->run( \@args );

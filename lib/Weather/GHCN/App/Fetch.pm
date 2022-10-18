@@ -269,7 +269,7 @@ sub run ($progname, $argv_aref) {
                 $ii++;
             }
         }
-        warn '*W* no station id\'s found in the input'
+        die '*E* no station id\'s found in the input'
             unless $ii;
     }
 
