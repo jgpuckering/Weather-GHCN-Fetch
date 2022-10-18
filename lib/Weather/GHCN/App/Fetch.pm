@@ -260,17 +260,21 @@ sub run ($progname, $argv_aref) {
     # (but not if stdin is pointing to the terminal)
     if ( -p *STDIN || -f *STDIN ) {
         my $ii;
-        $ghcn->stnid_filter_href( {} );
+        my %f;
         while (my $line = <STDIN>) {       ## no critic [ProhibitExplicitStdin]
             chomp;
             my @id_list = $line =~ m{ $STN_ID_RE }xmsg;
             foreach my $id ( @id_list ) {
-                $ghcn->stnid_filter_href->{$id}++;
+                $f{$id}++;
                 $ii++;
             }
         }
-        die '*E* no station id\'s found in the input'
-            unless $ii;
+        
+        if ($ii == 0) {
+            warn '*W* no station ids found in the input';            
+        } else {
+            $ghcn->stnid_filter_href( \%f );            
+        }
     }
 
     $ghcn->load_stations;
@@ -280,10 +284,14 @@ sub run ($progname, $argv_aref) {
     say {*STDERR} '*I* ', $ghcn->stn_filtered_count, ' stations matched range and measurement options';
 
     if ($ghcn->stn_filtered_count > $STN_THRESHOLD ) {
-        print {*STDERR} ">>>> There are a lot of stations to process. Continue (y/n)?\n>>>> ";
-        my $reply = <>;
-        chomp $reply;
-        exit if $reply =~ m{ \A ( n | no ) }xmsi;
+        if (-t *STDIN) {                
+            print {*STDERR} ">>>> There are a lot of stations to process. Continue (y/n)?\n>>>> ";
+            my $reply = <*STDIN>;
+            chomp $reply;
+            exit if $reply =~ m{ \A ( n | no ) }xmsi;
+        } else {
+            die '*E* too many stations to process';
+        }
     }
 
     if ( $Opt->report eq 'kml' ) {

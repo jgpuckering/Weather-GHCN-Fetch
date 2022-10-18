@@ -167,7 +167,7 @@ subtest 'station ids from file' => sub {
 
     throws_ok {
         Weather::GHCN::App::Fetch->run( \@args );
-    } qr/no station id's found/, 'no station ids found in stdin';
+    } qr/no station ids found/, 'no station ids found in stdin';
 
     close *STDIN or warn $!;
     *STDIN = *STDIN_SAVED;
