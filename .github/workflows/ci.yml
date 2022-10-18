@@ -43,7 +43,7 @@ jobs:
 
     - name: Run tests
       run: |
-        dzil test
+        dzil test -v
 
     - name: Show Errors on Windows
       if:  ${{ failure() && startsWith( matrix.runner, 'windows-')}}
