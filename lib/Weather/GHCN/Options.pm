@@ -265,20 +265,9 @@ method get_getopt_list :common () {
         next if ref $row ne 'ARRAY';
 
         # pick off the first three values, then slurp the rest
-        my ($opt_kw, $opt_type, $default, @others) = $row->@*;
+        my ($opt_kw, $opt_type, $default, %h) = $row->@*;
         # skip the group dividers
         next if not $opt_kw;
-
-        # now figure out whether the slurped values are a hash of
-        # other options (including label) or just a pair of scalars
-        # ('label' and label value with no other options).
-        my %h;
-        if (@others > 1 && ref $others[0] eq 'HASH') {
-            %h = @others;
-        }
-        elsif (@others > 1 && $others[0] eq 'label') {
-            $h{'label'} = $others[2];
-        }
 
         my $label = $h{'label'} // $SPACE;
         my $alias_aref = $h{'alias'} // [];

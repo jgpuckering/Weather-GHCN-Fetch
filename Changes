@@ -1,5 +1,7 @@
 Revision history for Perl module libary Windows-GHCN-Fetch
 
+v0.0.009       in progress
+  - fix Options::get_getopt_list so it handles aliases properly
 
 v0.0.008       2022-10-18
   - added keyword parameter stdin (=> 0) to App::Fetch so station ids from stdin can be disabled in unit tests
