@@ -30,7 +30,9 @@ our $VERSION = 'v0.0.000';
 
 use Weather::GHCN::App::Fetch;
 
-Weather::GHCN::App::Fetch->run( \@ARGV );
+# we set stdin to true to enable station id filtering via pipe or file 
+# using stdin
+Weather::GHCN::App::Fetch->run( \@ARGV, stdin => 1 );
 
 ########################################################################
 # Documentation
