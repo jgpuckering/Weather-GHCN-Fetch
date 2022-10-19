@@ -9,6 +9,8 @@ v0.0.007       2022-10-17
   - added #!/usr/bin/perl to ghch_fetch.pl
   - removed the file extension in the bin scripts for proper Windows and *nix deployment
   - (hopefully) fixed "Failed test -help at t/91_ghcn_fetch.t" caused when PERLDOC=-MPod::Perldoc::ToTextOverstrike
+  - added keyword parameter stdin (=> 0) to App::Fetch so station ids from stdin can be disabled in unit tests
+  - fixed a bug causing unit tests to fail because command-line option variables weren't being reset
   
 v0.0.006       2022-10-16
   - fix for ticket 144693 "Can't open ghcn_fetch"

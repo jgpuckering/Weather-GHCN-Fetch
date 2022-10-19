@@ -155,19 +155,37 @@ __PACKAGE__->run( \@ARGV ) unless caller;
 
 =head1 SUBROUTINES
 
-=head2 run ( \@ARGV )
+=head2 run ( \@ARGV, stdin => 0 )
 
 Invoke this subroutine, passing in a reference to @ARGV, in order to
 fetch NOAA GHCN station data or daily weather data.
 
 See ghnc_fetch.pl -help for details.
 
+Stations are filtered by various options, such as -country and -location.
+But Fetch->run can also receive a list of station id's via a pipe or
+a file.  To enable this feature, set the B<stdin> parameter to 1 (true).
+
+When calling Fetch->run inside a test script, it's usually best to leave
+this option disabled as some test harnesses may fool the algorithm used
+to detect stdin from a file or pipe.  This can be done by omitting
+the stdin => <bool> parameter, or setting it to false.
+
+
 =cut
 
 sub run ($progname, $argv_aref, %args) {
-    $args{'stdin'} //= $TRUE;
 
     local @ARGV = $argv_aref->@*;
+
+    # these persist across calls to run() in the unit tests, so we
+    # need to reset them each time
+    $Opt_savegui = $FALSE;
+    $Opt_gui     = $FALSE;     
+    $Opt_help    = $FALSE;    
+    $Opt_readme  = $FALSE;  
+    $Opt_usage   = $FALSE;   
+    $Opt_outclip = $FALSE; 
 
     my $ghcn = Weather::GHCN::StationTable->new;
 
@@ -198,7 +216,7 @@ sub run ($progname, $argv_aref, %args) {
     # parse out the script options into $Opt_ fields, letting the rest
     # pass through to get_user_options below
     GetOptions( %script_args );
-    
+
     if ($Opt_outclip and not $USE_WINCLIP) {
         die "*E* -outclip not available (needs Win32::Clipboard)\n";
     }

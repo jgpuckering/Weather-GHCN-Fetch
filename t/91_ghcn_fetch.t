@@ -109,7 +109,6 @@ subtest 'output to clipboard' => sub {
     my $clip = Win32::Clipboard();
     $clip->Empty();
     @args = (
-        @cmd,
         '-country',     'US',
         '-state',       'NY',
         '-location',    'New York',
@@ -121,14 +120,14 @@ subtest 'output to clipboard' => sub {
         '-outclip',
     );
     ($stdout, $stderr) = capture {
-        system(@args) == 0 or syserror();
+        Weather::GHCN::App::Fetch->run( \@args );
     };
     my $got = $clip->Get();
     like $got, qr/Year\s+Decade\s+TMAX\s+TMIN.*?\d{4}/ms, 'clipboard output';
 };
 
 subtest 'kml and color options' => sub {
-    my @args = (
+    @args = (
         '-report',      'kml',
         '-kmlcolor',    'azure',
         '-location',    'CA006105976,CA006105978',
@@ -138,7 +137,7 @@ subtest 'kml and color options' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
+        Weather::GHCN::App::Fetch->run( \@args );
     };
 
     like $stdout, qr/xml.*kml/ms, 'kml "" to stdout';
@@ -200,7 +199,7 @@ subtest 'fetch New York station metadata' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
+        Weather::GHCN::App::Fetch->run( \@args );
     };
 
     my @result = split "\n", $stdout;
@@ -230,7 +229,7 @@ subtest '-loc cda -report monthly -range 2000-2001 -dataonly' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
+        Weather::GHCN::App::Fetch->run( \@args );
     };
 
     like $stdout, qr/Year\s+Month\s+Decade.*?TMAX\s+TMIN.*?\d{4}/ms, 'data found';
@@ -250,7 +249,7 @@ subtest 'fetch daily -loc cda -range 2000-2001 -fmonth 6 -performance' => sub {
     );
 
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
+        Weather::GHCN::App::Fetch->run( \@args );
     };
 
     like $stdout, qr/Year\s+Month\s+Day.*?TMAX\s+TMIN.*?\d{4}/ms, 'data found';
@@ -271,7 +270,7 @@ subtest 'fetch with unrecognized options' => sub {
     );
 
     throws_ok {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE );
+        Weather::GHCN::App::Fetch->run( \@args );
     } qr/unrecognized options: -INVALID_OPTION/ms, 'invalid option';
 };
 
@@ -284,25 +283,25 @@ subtest 'fetch with unrecognized options' => sub {
 subtest 'options readme, usage and help' => sub {
     @args = ('-readme');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
+        Weather::GHCN::App::Fetch->run( \@args )
     };
     like $stdout, qr/Source:/, $args[0];
 
     @args = ( '-usage' );
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
+        Weather::GHCN::App::Fetch->run( \@args )
     };
     like $stdout, qr/Usage:/, $args[0];
 
     @args = ('-?');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
+        Weather::GHCN::App::Fetch->run( \@args )
     };
     like $stdout, qr/Usage:/, $args[0];
 
     @args = ('-help');
     ($stdout, $stderr) = capture {
-        Weather::GHCN::App::Fetch->run( \@args, stdin => $FALSE )
+        Weather::GHCN::App::Fetch->run( \@args )
     };
     like $stdout, qr/Fetch station and weather data/, $args[0];
 };
