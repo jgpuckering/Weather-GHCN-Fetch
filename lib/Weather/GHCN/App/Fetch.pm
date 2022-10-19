@@ -326,11 +326,11 @@ sub run ($progname, $argv_aref, %args) {
         goto WRAP_UP;
     }
     elsif ( $Opt->report eq 'stn' ) {
-        say $ghcn->get_stations();
+        say $ghcn->get_stations( kept => 1 );
         goto WRAP_UP;        
     }
     elsif ( $Opt->report eq 'id' ) {
-        my @stn_list = $ghcn->get_stations( list => 1, no_header => 1 );
+        my @stn_list = $ghcn->get_stations( list => 1, kept => 1, no_header => 1 );
         my @id_list = map { $_->[0] } @stn_list;
         say join $NL, @id_list;
         goto WRAP_UP;        
