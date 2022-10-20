@@ -265,9 +265,21 @@ method get_getopt_list :common () {
         next if ref $row ne 'ARRAY';
 
         # pick off the first three values, then slurp the rest
-        my ($opt_kw, $opt_type, $default, %h) = $row->@*;
+        my ($opt_kw, $opt_type, $default, @other) = $row->@*;
         # skip the group dividers
         next if not $opt_kw;
+
+        my %h;
+        while (my $item = shift @other) {
+            if (ref $item eq 'HASH') {
+                while (my ($k,$v) = each $item->%*) {
+                    $h{$k} = $v;
+                }
+            } else {
+                my $value = shift @other;
+                $h{$item} = $value;
+            }
+        }
 
         my $label = $h{'label'} // $SPACE;
         my $alias_aref = $h{'alias'} // [];
