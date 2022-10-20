@@ -71,7 +71,7 @@ use Fcntl                   qw( :DEFAULT );
 use File::stat;
 use Path::Tiny;
 use Try::Tiny;
-use Time::Piece;
+use Time::Piece     1.32;
 use LWP::Simple;
 
 const my $TRUE    => 1;          # perl's usual TRUE
