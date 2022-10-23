@@ -1,4 +1,8 @@
 .build/
-TODO.txt
+LICENSE
 Makefile
+Makefile.PL
+META.json
+META.yml
+TODO.txt
 Weather-GHCN-Fetch*
