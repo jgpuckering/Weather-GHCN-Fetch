@@ -125,7 +125,7 @@ my $Opt;    # options object, with property accessors for each user option
 my $Opt_savegui;    # file in which to save options from GUI dialog
 my $Opt_gui;        # launch the GUI dialog
 my $Opt_help;       # display POD documentation
-my $Opt_readme;     # launch a browser displaying the GHCN readme file
+my $Opt_readme;     # print the text of the GHCN readme file
 my $Opt_usage;      # display a synopsis of the command line syntax
 my $Opt_outclip;    # send report output to the Windows clipboard instead of STDOUT
 
