@@ -1172,7 +1172,7 @@ method report_kml ( %arg ) {
     my @output;
 
     push @output, '<?xml version="1.0" encoding="UTF-8"?>';
-    push @output, '<kml xmlns="http://www.opengps.net/kml/2.2">';
+    push @output, '<kml xmlns="http://www.opengis.net/kml/2.2">';
     push @output, '<Document>';
     push @output, '  <Style id="mypin">';
     push @output, '  <IconStyle>';
