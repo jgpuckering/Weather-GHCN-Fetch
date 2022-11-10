@@ -62,6 +62,7 @@ use Const::Fast;
 use Path::Tiny;
 
 my $Bin = $FindBin::Bin;
+note $Bin;
 
 const my $TRUE   => 1;          # perl's usual TRUE
 const my $FALSE  => not $TRUE;  # a dual-var consisting of '' and 0
