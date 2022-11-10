@@ -305,7 +305,7 @@ sub run ($progname, $argv_aref, %args) {
     if ($ghcn->stn_filtered_count > $STN_THRESHOLD ) {
         if (-t *STDIN) {                
             print {*STDERR} ">>>> There are a lot of stations to process. Continue (y/n)?\n>>>> ";
-            my $reply = <*STDIN>;
+            my $reply = <STDIN>;
             chomp $reply;
             exit if $reply =~ m{ \A ( n | no ) }xmsi;
         } else {
