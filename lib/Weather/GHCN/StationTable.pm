@@ -1602,7 +1602,7 @@ method _compute_quality ($stn, $context_msg, $day_count, $range, $quality) {
     my $data_quality = int(($day_count / $expected_days) * 1000 + 0.5) / 10.0;
 
     if ( $data_quality < $quality ) {
-        my $msg = sprintf "%s\tinsufficient data\tstation only has %d days in %s and needs %d (%0.1f%% < %d%%)",
+        my $msg = sprintf "%s\tstation only has %d days in %s and needs %d (%0.1f%% < %d%%)",
             $stn->id, $day_count, $context_msg, $expected_days, $data_quality, $quality;
         $stn->add_note($ERR_INSUFF, $msg);
         $insufficient_quality++;
@@ -1930,8 +1930,8 @@ method _report_gaps ($stn, $gaps_href) {
         my $years_nrs = rng_new( @years );
         my $gap_nrs = $active_nrs->diff( $years_nrs );
         if ($gap_nrs->cardinality) {
-            my $msg = sprintf "%s\tmissing data in the active range\tyears %s", $stn->id, $gap_nrs->as_string;
-            $stn->add_note($WARN_MISS_YA, $msg, $Opt->verbose);
+            my $msg = sprintf "%s\tmissing data in the active range: years %s", $stn->id, $gap_nrs->as_string;
+            $stn->add_note($WARN_MISS_YA, $msg, $TRUE);
             my $iter = $gap_nrs->iterate_runs();
             while (my ( $from, $to ) = $iter->()) {
                 foreach my $yyyy ($from .. $to) {
@@ -1948,8 +1948,8 @@ method _report_gaps ($stn, $gaps_href) {
         my $years_nrs = rng_new( @years );
         my $gap_nrs = $opt_range_nrs->diff( $years_nrs );
         if ($gap_nrs->cardinality) {
-            my $msg = sprintf "%s\tmissing data in the filter range\tyears %s", $stn->id, $gap_nrs->as_string;
-            $stn->add_note($WARN_MISS_YF, $msg, $Opt->verbose);
+            my $msg = sprintf "%s\tmissing data in the filter range: years %s", $stn->id, $gap_nrs->as_string;
+            $stn->add_note($WARN_MISS_YF, $msg, $TRUE);
             my $iter = $gap_nrs->iterate_runs();
             while (my ( $from, $to ) = $iter->()) {
                 foreach my $yyyy ($from .. $to) {
