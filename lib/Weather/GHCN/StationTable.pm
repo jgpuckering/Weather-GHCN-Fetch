@@ -351,20 +351,21 @@ method get_footer ( %args ) {
     my @output;
 
     push @output, 'Notes:';
-    push @output, '  1. Data is obtained from the GHCN GHCN repository, specifically:';
+    push @output, '  * Data is obtained from the GHCN GHCN repository, specifically:';
     push @output, $TAB . $GHCN_STN_LIST_URL;
     push @output, $TAB . $GHCN_STN_INVEN_URL;
     push @output, $TAB . $GHCN_DATA;
-    push @output, '  2. Temperatures are in Celsius, precipitation in mm and snowfall/depth in cm.';
-    push @output, '  3. TAVG is a daily average computed at each station; Tavg is the average of TMAX and TMIN.';
-    push @output, '  4. Data is averaged at the daily level across multiple stations.';
-    push @output, '  5. Data is summarized at the monthly or yearly level using different rules depending on the measure:';
+    push @output, '  * Temperatures are in Celsius, precipitation in mm and snowfall/depth in cm.';
+    push @output, '  * TAVG is a daily average computed at each station; Tavg is the average of TMAX and TMIN.';
+    push @output, '  * Data is averaged at the daily level across multiple stations.';
+    push @output, '  * Data is summarized at the monthly or yearly level using different rules depending on the measure:';
     push @output, $TAB . '- TMAX is aggregated by max(); TMIN is aggregated by min().';
     push @output, $TAB . '- TAVG and Tavg are aggregated by average().';
     push @output, $TAB . '- PRCP and SNOW are aggregated by sum().';
     push @output, $TAB . '- SNWD is aggregated by max().';
-    push @output, '  6. Decades begin on Jan 1 in calendar years ending in zero.';
-    push @output, '  7. Seasonal decades/year/quarters begin Dec 1 of the previous calendar year.';
+    push @output, '  * Decades begin on Jan 1 in calendar years ending in zero.';
+    push @output, '  * Seasonal decades/year/quarters begin Dec 1 of the previous calendar year.';
+    push @output, '  * Quality is the ratio of non-missing data days to days in the year, as a $\'tage.';
 
     return $return_list ? @output : tsv(\@output);
 }
@@ -527,7 +528,7 @@ method get_missing_data_ranges ( %args ) {
 
     my @output;
 
-    push @output, ['Missing year, months and days by station id and year (for selected stations):']
+    push @output, [ 'StnId', 'Year', 'Quality%', 'Missing months and days']
         unless $args{no_header};
 
     foreach my $stnid ( sort keys $_missing_href->%* ) {
@@ -536,9 +537,11 @@ method get_missing_data_ranges ( %args ) {
         my $yyyy_href = $_missing_href->{$stnid};
 
         foreach my $yyyy ( sort keys $yyyy_href->%* ) {
-            my $values_href = $yyyy_href->{$yyyy};
-            foreach my $v ( keys $values_href->%* ) {
-                push @output, [ $stnid, $yyyy, $v ];
+            my $gaps_href = $yyyy_href->{$yyyy};
+            foreach my $key ( keys $gaps_href->%* ) {
+                my $gap_text = $key;
+                my $quality_pct = $gaps_href->{$key};
+                push @output, [ $stnid, $yyyy, $quality_pct, $gap_text ];
             }
         }
     }
@@ -1962,6 +1965,10 @@ method _report_gaps ($stn, $gaps_href) {
               ( $opt_range_nrs and not $opt_range_nrs->contains($yyyy)
               or
                 $Opt->anomalies and not $opt_baseline_nrs->contains($yyyy) );
+        
+        my $gap_months = $EMPTY;
+        my $days_missing = 0;
+      
 
         ## no critic [ProhibitDoubleSigils]
         ## no critic [ProhibitMagicNumbers]
@@ -1978,10 +1985,10 @@ method _report_gaps ($stn, $gaps_href) {
         $month_gap_nrs->remove( @months );
 
         if ($month_gap_nrs->cardinality) {
-            my $gap_months = join $SPACE, _month_names($month_gap_nrs->as_array);
-            my $msg = sprintf "%s\tmissing data: year %d months %s", $stn->id, $yyyy, $gap_months;
-            $stn->add_note($WARN_MISS_MO, $msg, $Opt->verbose);
-            $_missing_href->{$stn->id}{$yyyy}{$gap_months}++;
+            foreach my $mm ($month_gap_nrs->as_array) {
+                $days_missing += _days_in_month($yyyy,$mm);
+            }
+            $gap_months = join $SPACE, _month_names($month_gap_nrs->as_array);
         }
 
         my $opt_fday_nrs   = rng_new($Opt->fday);
@@ -2017,16 +2024,25 @@ method _report_gaps ($stn, $gaps_href) {
             my $days_nrs = rng_new( @days_with_data );
 
             my $day_gap_nrs = $days_in_month_nrs->diff($days_nrs);
+            
+            $days_missing += $day_gap_nrs->cardinality;
 
             $gap_text .= $SPACE . _month_names($mm) . '[' . $day_gap_nrs->as_string . ']'
                 unless $day_gap_nrs->is_empty;
         }
+        
+        $gap_text = join ' ', $gap_months, $gap_text
+            if $gap_months;
+            
+        $gap_text =~ s{ \A \s+ }{}xms;  # trim leading whitespace
 
         if ( $gap_text !~ m{\A \s* \Z}xms ) {
-            my $msg = sprintf "%s\tmissing data: %d days %s", $stn->id, $yyyy, $gap_text;
+            my $days_of_data = _days_in_year($yyyy) - $days_missing;
+            my $quality = sprintf '%6.1f', 100 * ( $days_of_data / _days_in_year($yyyy) );
+            my $msg = sprintf "%s\tmissing data: %d %s %s", $stn->id, $yyyy, $quality, $gap_text;
             $stn->add_note($WARN_MISS_DY, $msg, $Opt->verbose);
             $gap_text =~ s{\A \s+ }{}xms;
-            $_missing_href->{$stn->id}{$yyyy}{$gap_text}++;
+            $_missing_href->{$stn->id}{$yyyy}{$gap_text} = $quality;
         }
     }
 

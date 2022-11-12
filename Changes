@@ -1,5 +1,11 @@
 Revision history for Perl module libary Windows-GHCN-Fetch
 
+v0.0.011       ????-??-??
+  - restore printing of reasons for rejection
+  - improve warnings for filter and active range missing data
+  - refactor StationTable _report_gaps to create _find_gaps
+  - add quality % column to missing data reporting, and related improvements
+
 v0.0.010       2022-11-10
   - moved EXAMPLES POD from Fetch.pm to ghch_fetch
   - fixed: user prompt when stations found > 100 

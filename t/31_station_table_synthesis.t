@@ -379,7 +379,7 @@ subtest 'missing_data' => sub {
 
     ok $ghcn->has_missing_data, 'has_missing_data returned true';
     my $missing_text = $ghcn->get_missing_data_ranges( list => 0 );
-    like $missing_text, qr/Missing year,/, 'get_missing_data_ranges text looks good';
+    like $missing_text, qr/ StnId \t Year \t Quality[%] /xms, 'get_missing_data_ranges text looks good';
 
     my @missing_list = $ghcn->get_missing_data_ranges( list => 1 );
     is @missing_list, 5, 'get_missing_data_ranges returned 5 rows';
