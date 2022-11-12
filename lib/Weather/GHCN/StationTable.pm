@@ -1678,6 +1678,22 @@ method _filter_stations ($stations_href) {
     return $count;
 }
 
+method _find_gaps ($stn, $range, $type, $noteid, $years_aref) {
+    my $nrs = rng_new( $range );
+    my $years_nrs = rng_new( $years_aref->@* );
+    my $gap_nrs = $nrs->diff( $years_nrs );
+    if ($gap_nrs->cardinality) {
+        my $msg = sprintf "%s\tmissing data in the $type range\tyears %s", $stn->id, $gap_nrs->as_string;
+        $stn->add_note($noteid, $msg, $TRUE);
+        my $iter = $gap_nrs->iterate_runs();
+        while (my ( $from, $to ) = $iter->()) {
+            foreach my $yyyy ($from .. $to) {
+                $_missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
+            }
+        }
+    }
+}
+
 method _initialize_flag_cnts () {
 
     # initialize KEPT flags for all metrics, so all get printed
@@ -1926,38 +1942,15 @@ method _report_gaps ($stn, $gaps_href) {
     my @years = sort keys $gaps_href->%*;
 
     if ( $Opt->active ) {
-        my $active_nrs = rng_new( $Opt->active );
-        my $years_nrs = rng_new( @years );
-        my $gap_nrs = $active_nrs->diff( $years_nrs );
-        if ($gap_nrs->cardinality) {
-            my $msg = sprintf "%s\tmissing data in the active range: years %s", $stn->id, $gap_nrs->as_string;
-            $stn->add_note($WARN_MISS_YA, $msg, $TRUE);
-            my $iter = $gap_nrs->iterate_runs();
-            while (my ( $from, $to ) = $iter->()) {
-                foreach my $yyyy ($from .. $to) {
-                    $_missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
-                }
-            }
-        }
+        $self->_find_gaps($stn, $Opt->active, 'active', $WARN_MISS_YA, \@years);
+    }
+
+    if ( $Opt->range ) {
+        $self->_find_gaps($stn, $Opt->range, 'range', $WARN_MISS_YF, \@years);
     }
 
     my $opt_range_nrs    = rng_new($Opt->range);
     my $opt_baseline_nrs = rng_new($Opt->baseline);
-
-    if ( $Opt->range ) {
-        my $years_nrs = rng_new( @years );
-        my $gap_nrs = $opt_range_nrs->diff( $years_nrs );
-        if ($gap_nrs->cardinality) {
-            my $msg = sprintf "%s\tmissing data in the filter range: years %s", $stn->id, $gap_nrs->as_string;
-            $stn->add_note($WARN_MISS_YF, $msg, $TRUE);
-            my $iter = $gap_nrs->iterate_runs();
-            while (my ( $from, $to ) = $iter->()) {
-                foreach my $yyyy ($from .. $to) {
-                    $_missing_href->{$stn->id}{$yyyy}{$EMPTY}++;
-                }
-            }
-        }
-    }
 
     my (undef, undef, undef , $mday, $mon, $year) = localtime time;
     ## no critic [ValuesAndExpressions::ProhibitMagicNumbers]
