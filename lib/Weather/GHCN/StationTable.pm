@@ -744,7 +744,6 @@ rejection.
 
 =cut
 
-# TODO: consider removing this as it is no longer used anywere
 method get_station_note_list () {
     my @stn_notes;
 

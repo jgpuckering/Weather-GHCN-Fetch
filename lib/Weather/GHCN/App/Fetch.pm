@@ -373,6 +373,10 @@ sub run ($progname, $argv_aref, %args) {
         say $EMPTY;
         say 'Stations that failed to meet range or quality criteria:';
         say tsv(\@rejected);
+        say $EMPTY;
+        say 'Reasons for rejection:';
+        my @notes = $ghcn->get_station_note_list;
+        say tsv(\@notes);
     }
 
     if ( $ghcn->has_missing_data ) {
