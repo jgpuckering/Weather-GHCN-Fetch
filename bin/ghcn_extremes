@@ -84,7 +84,7 @@ to -20 Celsius.
 Consider any consecutive run of <int> or more days where the temperature
 exceeds that specified by -limit as a heatwave (or coldwave).
 
-=item peryear
+=item -peryear
 
 Report number of heatwaves per year.
 
