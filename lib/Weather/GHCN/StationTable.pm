@@ -13,12 +13,10 @@ Weather::GHCN::StationTable - collect station objects and weather data
   my $ghcn = Weather::GHCN::StationTable->new;
 
   my ($opt, @errors) = $ghcn->set_options(
-    user_options => {
-        country     => 'US',
-        state       => 'NY',
-        location    => 'New York',
-        report      => 'yearly',
-    },
+    country     => 'US',
+    state       => 'NY',
+    location    => 'New York',
+    report      => 'yearly',
   );
   die @errors if @errors;
 
@@ -979,7 +977,7 @@ method load_data ( %args ) {
     return;
 }
 
-=head2 load_stations ()
+=head2 load_stations ( content => undef )
 
 Read the GHCN stations list and the stations inventory list and create
 a hash of Station objects, keyed on station id, filtered according
@@ -988,6 +986,14 @@ to the options provided in set_options().
 Returns a hash of Weather::GHCN::Station objects, keyed on station id.
 
 =over 4
+
+=item argument: content => undef
+
+Normally, load_stations will fetch the stations list from the cache,
+or if not in the cache (or its stale) then from the GHCN web repository.
+However, an API caller might want to obtain the station text by some
+other means, in which case it can use the option 'content' keyword
+argument to just pass in a scalar containing the station text.
 
 =item option: country <str>
 
@@ -1031,16 +1037,16 @@ cos-surface-network-gsn-program-overview>
 
 =cut
 
-method load_stations () {
+method load_stations (%args) {
+    
+    my $content = $args{content} // $self->_fetch_url( $GHCN_STN_LIST_URL, 'URI::Fetch_stn');
 
-    my $stations_content = $self->_fetch_url( $GHCN_STN_LIST_URL, 'URI::Fetch_stn');
-
-    if ( $stations_content =~ m{<title>(.*?)</title>}xms ) {
+    if ( $content =~ m{<title>(.*?)</title>}xms ) {
         croak '*E* unable to fetch data from ' . $GHCN_STN_LIST_URL . ': ' . $1;
     }
 
     ## no critic [InputOutput::RequireBriefOpen]
-    open my $stn_fh, '<', \$stations_content
+    open my $stn_fh, '<', \$content
         or croak '*E* unable to open stations_content string';
 
     $_tstats->start('Parse_stn');

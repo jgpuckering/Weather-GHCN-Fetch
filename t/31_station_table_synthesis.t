@@ -32,7 +32,7 @@
 # to force the cache routines to only fetch from the cache.  If any
 # pages are missing, the fetch will return undef and test cases will
 # fail.  For this reason, it's best not to fiddle with the
-# $profile_options cache options.
+# cache options.
 #
 # You can change options by calling set_options again, and you can even
 # skip calling load_stations if the changes you made to options are
