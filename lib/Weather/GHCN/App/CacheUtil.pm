@@ -116,27 +116,35 @@ sub run ($progname, $argv_aref) {
 
     my @files = $argv_aref->@*;
 
-    my ( $output, $new_fh, $old_fh );
-    if ( $Opt->outclip and $USE_WINCLIP ) {
-        open $new_fh, '>', \$output
-            or die 'Unable to open buffer for write';
-        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)
-    }
+    # send print output to the Windows clipboard if requested and doable
+    outclip() if $Opt->outclip and $USE_WINCLIP;
 
     my ($ghcn, $stations_href) = load_cached_stations($Opt->profile, $Opt->cachedir);
 
     my $keep_href = keep_aliases($ghcn->profile_href);
 
     report_stations($stations_href, $keep_href);
+
+    # restore print output to stdout
+    outclip();
     
-WRAP_UP:
-    # send output to the Windows clipboard
-    if ( $Opt->outclip and $USE_WINCLIP ) {
+    return;
+}
+
+sub outclip () {
+    state $old_fh;
+    state $output;
+
+    if ($old_fh) {
         Win32::Clipboard->new()->Set( $output );
         select $old_fh;     ## no critic [ProhibitOneArgSelect]
-    }
+    } else {
+        open my $new_fh, '>', \$output
+            or die 'Unable to open buffer for write';
+        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)        
+    } 
 
-    
+    return;
 }
 
 sub load_cached_stations ($profile, $cachedir) {
