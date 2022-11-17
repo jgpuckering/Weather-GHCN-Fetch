@@ -385,6 +385,12 @@ metrics) as well as statistics for the memory consumption of the
 Data hash table.  Also some memory statistics are added to some
 Timing subjects.
 
+=item -profile <filespec>
+
+Location of the optional user profile YAML file, which can be used
+to define location aliases and set commonly used options such as
+-cachefile.  Defaults to ~/.ghcn_fetch.yaml.
+
 =item -refresh <str>
 
 This option determines whether and when cached files are refreshed from
