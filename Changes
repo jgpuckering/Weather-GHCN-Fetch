@@ -5,6 +5,10 @@ v0.0.011       ????-??-??
   - improve warnings for filter and active range missing data
   - refactor StationTable _report_gaps to create _find_gaps
   - add quality % column to missing data reporting, and related improvements
+  - for API use, provided an optional parameter to StationTable::load_stations to receive the station text
+  - corrected some API POD related to the now defunct user_options and profile_options hashes in set_options
+  - add ghcn_cache script for cache maintenance
+
 
 v0.0.010       2022-11-10
   - moved EXAMPLES POD from Fetch.pm to ghch_fetch
