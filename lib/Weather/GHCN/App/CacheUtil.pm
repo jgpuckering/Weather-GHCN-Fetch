@@ -114,8 +114,6 @@ sub run ($progname, $argv_aref) {
 
     $Opt = get_options($argv_aref);
 
-    my @files = $argv_aref->@*;
-
     # send print output to the Windows clipboard if requested and doable
     outclip() if $Opt->outclip and $USE_WINCLIP;
 
