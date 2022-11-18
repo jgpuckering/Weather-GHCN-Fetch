@@ -1193,6 +1193,7 @@ method report_kml ( %arg ) {
         next if $stn->error_count;
         # TODO:  use ->sets to get a list of spans and use the first span instead of splitting run_list
         my ($start, $end) = split m{ [-] }xms, $stn->active;
+        $end //= $start;
 
         my $desc = $stn->description();
 

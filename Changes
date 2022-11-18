@@ -13,6 +13,7 @@ v0.0.011       ????-??-??
   - moved testing of get_profile_options and get_profile_filespec from 22 to 14_options.t
   - added ghcn_cache script for cache maintenance
   - removed check for valid cachedir that was preventing ghcn_fetch working without a cache
+  - eliminate uninitialized warning in kml report when a station active range has only one value (i.e. end = start)
 
 
 v0.0.010       2022-11-10
