@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# ghcn_extremes.pl - Report temperature extremes from ghcn_fetch.pl output
+# ghcn_extremes - Report temperature extremes from ghcn_fetch output
 
 use v5.18;  # minimum for Object::Pad
 
@@ -16,15 +16,15 @@ __END__
 
 =head1 NAME
 
-ghcn_extremes.pl - Report temperature extremes from ghcn_fetch.pl output
+ghcn_extremes - Report temperature extremes from ghcn_fetch output
 
 =head1 SYNOPSIS
 
-    ghcn_extremes.pl [-limit <int>] [-ndays <int>]
-                     [-peryear] [-daycounts] [-cold] [-nogaps]
-                     [-outclip] [ file... ]
+    ghcn_extremes [-limit <int>] [-ndays <int>]
+                  [-peryear] [-daycounts] [-cold] [-nogaps]
+                  [-outclip] [ file... ]
 
-    ghcn_extremes.pl [--help | -? | --usage]
+    ghcn_extremes [--help | -? | --usage]
 
 =head1 DESCRIPTION
 
@@ -134,7 +134,7 @@ respectively.
 
 =head1 RELATED SCRIPTS
 
-This script was designed to use the output from noaa_daily_parser.pl,
+This script was designed to use the output from ghcn_fetch      ,
 specifically when the option "-report daily" is used.  It generates
 the correct level and format of data for input to this script.
 

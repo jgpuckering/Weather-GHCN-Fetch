@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# ghcn_cacheutil.pl - Report temperature extremes from ghcn_fetch.pl output
+# ghcn_cacheutil - Manage the cache used by ghcn_fetch
 
 use v5.18;  # minimum for Object::Pad
 
@@ -16,14 +16,14 @@ __END__
 
 =head1 NAME
 
-ghcn_cacheutil.pl - Report temperature extremes from ghcn_fetch.pl output
+ghcn_cacheutil - Manage the cache used by ghcn_fetch
 
 =head1 SYNOPSIS
 
-    ghcn_cacheutil.pl [-location <dir>] [-couuntry <str>] [-state <str>]
-                      [-remove] [-cachedir <dir>] [-profile <file>] [-outclip]
+    ghcn_cacheutil [-location <dir>] [-couuntry <str>] [-state <str>]
+                   [-remove] [-cachedir <dir>] [-profile <file>] [-outclip]
 
-    ghcn_cacheutil.pl [--help | -? | --usage]
+    ghcn_cacheutil [--help | -? | --usage]
 
 =head1 DESCRIPTION
 
