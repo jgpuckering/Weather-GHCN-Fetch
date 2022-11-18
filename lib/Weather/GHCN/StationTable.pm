@@ -73,7 +73,6 @@ use Devel::Size;
 use FindBin;
 use Math::Trig;
 use Path::Tiny;
-use Try::Tiny;
 use Weather::GHCN::Common        qw( :all );
 use Weather::GHCN::TimingStats;
 #use Hash::Wrap          {-lvalue => 1, -defined => 1, -as => '_wrap_hash' };
@@ -92,8 +91,6 @@ const my $TAB    => qq(\t); # tab character
 const my $NL     => qq(\n); # perl platform-universal newline
 const my $TRUE   => 1;      # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
-
-const my $DEFAULT_PROFILE_FILE => '~/.ghcn_fetch.yaml';
 
 const my %MMM_TO_MM => (
     Jan=>1, Feb=>2, Mar=>3, Apr=>4, May=>5, Jun=>6,
@@ -1312,7 +1309,7 @@ method set_options (%user_options) {
     if ( defined $user_options{'profile'} ) {
         # save the expanded profile file path in the object
         $_profile_file = path( $user_options{'profile'} )->absolute()->stringify;
-        $_profile_href = _get_profile_options($_profile_file);
+        $_profile_href = Weather::GHCN::Options->get_profile_options($_profile_file);
     }
 
     $_ghcn_opt_obj //= Weather::GHCN::Options->new();
@@ -2055,81 +2052,6 @@ method _report_gaps ($stn, $gaps_href) {
     $_tstats->stop('Report_gaps');
 
     return;
-}
-
-#----------------------------------------------------------------------
-# Configuration Helper functions
-#----------------------------------------------------------------------
-
-sub _get_profile_options ($profile=$EMPTY) {
-
-    #debug# use DDP;
-    #debug# use Log::Dispatch;
-    #debug# my $log = Log::Dispatch->new(
-    #debug#     outputs => [
-    #debug#         [ 'File',   min_level => 'debug', filename => 'c:/sandbox/log.log' ],
-    #debug#         [ 'Screen', min_level => 'debug' ],
-    #debug#
-    #debug#     ]
-    #debug# );
-
-    my $profile_href = {};
-
-    # passing undef will result in an empty config
-    return $profile_href if not defined $profile;
-
-    #debug# use FindBin;
-    #debug# open my $fh, '>>', 'c:/sandbox/log.log' or die;
-    #debug# $log->debug( 'program ' . $0                                   );
-    #debug# $log->debug( 'caller ' . join(' | ', caller)                   );
-    #debug# $log->debug( 'received profile_file:           ' . $_profile );
-
-    my $profile_filespec = _get_profile_filespec($profile);
-
-    my $yaml_struct;
-    my $msg = $EMPTY;
-
-    # uncoverable branch false
-    if (-e $profile_filespec) {
-        # uncoverable branch false
-        try {
-            $yaml_struct = YAML::Tiny->read($profile_filespec);
-        } catch {
-            $msg = '*W* no cache or aliases: failed reading YAML in ' . $profile_filespec;
-            carp $msg;
-        }
-    } else {
-        return $profile_href;
-    }
-
-    $profile_href = $yaml_struct->[0]
-        if $yaml_struct;
-
-    #debug# $log->( 'yaml_struct length = ' . length $yaml_struct );
-    #debug# $log->( "\n" );
-    #debug# $log->( 'profile_filespec:                ' . $profile_filespec );
-    #debug# $log->( 'carp ' . $msg );
-    #debug# $log->( 'FindBin::Bin                    ' . $FindBin::Bin );
-    #debug# $log->( "\n");
-    #debug# $log->( 'profile_href ' . np($profile_href) );
-    #debug# $log->( "\n" );
-    #debug# $log->( "================" );
-    #debug# $log->( "\n" );
-    #debug# close $fh;
-
-    return $profile_href;
-}
-
-sub _get_profile_filespec ($profile) {
-
-    # an EMPTY arg will default to ~/.ghcn_fetch.yaml
-    $profile ||= $DEFAULT_PROFILE_FILE;
-
-    # Path::Tiny::path will replace ~ or ~username with the corresponding path
-    my $profile_filespec = path($profile);
-    #debug# say {$fh} 'profile_filespec (canon):        ', $profile_filespec;
-
-    return $profile_filespec;
 }
 
 #----------------------------------------------------------------------

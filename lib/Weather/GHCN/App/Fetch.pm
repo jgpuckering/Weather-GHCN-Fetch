@@ -141,7 +141,7 @@ const my $NL     => qq(\n);    # perl universal newline (any platform)
 const my $TRUE   => 1;         # perl's usual TRUE
 const my $FALSE  => not $TRUE; # a dual-var consisting of '' and 0
 
-const my $PROFILE_FILE => '~/.ghcn_fetch.yaml';
+const my $PROFILE_FILE => Weather::GHCN::Options->get_profile_filespec();
 
 const my $STN_THRESHOLD     => 100;     # ask if number of selected stations exceeds this
 
