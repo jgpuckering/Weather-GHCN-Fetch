@@ -197,9 +197,16 @@ sub report_stations ($stations_href, $keep_href) {
     foreach my $stnid (sort keys $stations_href->%*) {
         my $stn = $stations_href->{$stnid};
         my $loc = $Opt->location;
+        
         next if $Opt->country  and $stn->{Country}  ne $Opt->country;
         next if $Opt->state    and $stn->{State}    ne $Opt->state;
-        next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;
+        
+        if ($Opt->invert) {            
+            next if $Opt->location and $stn->{Location} =~ m{ $loc }xmsi;            
+        } else {
+            next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;            
+        }
+        
         $total_size += $stn->{Size};
         my $size = sprintf '%10s', commify( $stn->{Size} );
         
@@ -264,6 +271,7 @@ sub get_options ($argv_aref) {
         'state|prov:s',         # filter by state or province
         'location:s',           # filter by localtime
         'remove',               # remove cached daily files (except aliases)
+        'invert|v',             # invert -location selection criteria
         'cachedir:s',           # cache location
         'profile:s',            # profile file
         'outclip',              # output data to the Windows clipboard

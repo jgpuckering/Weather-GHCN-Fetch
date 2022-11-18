@@ -21,7 +21,8 @@ ghcn_cacheutil - Manage the cache used by ghcn_fetch
 =head1 SYNOPSIS
 
     ghcn_cacheutil [-location <dir>] [-couuntry <str>] [-state <str>]
-                   [-remove] [-cachedir <dir>] [-profile <file>] [-outclip]
+                   [-remove] [-invert|v]
+                   [-cachedir <dir>] [-profile <file>] [-outclip]
 
     ghcn_cacheutil [--help | -? | --usage]
 
@@ -61,6 +62,11 @@ comma-delimited list of station id's (e.g. CA006105978,USC00336346).
 
 As a handy shortcut, mappings between user-defined names and a station
 id or id list can be defined in the locations section of .ghcn_fetch.yaml.
+
+-item -invert
+
+Invert the -location selection criteria; i.e. select those stations
+where the pattern doesn't match.
 
 =item -remove
 
