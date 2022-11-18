@@ -200,16 +200,19 @@ sub report_stations ($stations_href, $keep_href) {
         
         next if $Opt->country  and $stn->{Country}  ne $Opt->country;
         next if $Opt->state    and $stn->{State}    ne $Opt->state;
+        next if $Opt->above    and $stn->{Size}     <= $Opt->above;
+        next if $Opt->below    and $stn->{Size}     >= $Opt->below;
         
         if ($Opt->invert) {            
             next if $Opt->location and $stn->{Location} =~ m{ $loc }xmsi;            
         } else {
             next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;            
         }
+                      
         
-        $total_size += $stn->{Size};
         my $size = sprintf '%10s', commify( $stn->{Size} );
-        
+        $total_size += $stn->{Size};
+
         my $removed = $EMPTY;
         if ( $Opt->remove and not $keep_href->{$stnid} ) {
             $stn->{PathObj}->remove;
@@ -272,6 +275,8 @@ sub get_options ($argv_aref) {
         'location:s',           # filter by localtime
         'remove',               # remove cached daily files (except aliases)
         'invert|v',             # invert -location selection criteria
+        'above:i',              # select files with size > than this
+        'below:i',              # select file with size < this
         'cachedir:s',           # cache location
         'profile:s',            # profile file
         'outclip',              # output data to the Windows clipboard

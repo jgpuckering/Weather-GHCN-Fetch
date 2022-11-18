@@ -21,14 +21,38 @@ ghcn_cacheutil - Manage the cache used by ghcn_fetch
 =head1 SYNOPSIS
 
     ghcn_cacheutil [-location <dir>] [-couuntry <str>] [-state <str>]
-                   [-remove] [-invert|v]
+                   [-invert|v] [-above <int>] [-below <int>]
+                   [-remove] 
                    [-cachedir <dir>] [-profile <file>] [-outclip]
 
     ghcn_cacheutil [--help | -? | --usage]
 
 =head1 DESCRIPTION
 
+This script provides an easy way to manage the cache used by ghcn_fetch
+(or other applications using the Weather::GHCN::StationTable modules).
 
+Without any parameters, ghcn_cacheutil will list the files in the 
+default cache, as defined in the user profile file (typically 
+~/.ghcn_fetch.yaml).  You can also specify the profile file or the
+cachefile using parameters.
+
+There are two kinds of cached files:  .txt files that contain station
+metadata, and .dly files which contain daily weather data for a specific
+station.  The .txt files are normally excluded from the list since
+it usually makes sense to keep these files around for reuse.  
+
+The -remove option will remove files that are listed.
+
+The script provides selection parameters similar to ghcn_fetch so
+that the list of stations can be filtered by country, state (or province),
+and location name (or station id).  This facilitates selective cleanup.
+
+For example, if you've just done some analysis of stations in Maine and
+don't plan to reuse that data in the near future, you can clean up
+the cache using ghcn_cacheutil -country US -state ME -remove.
+
+Output of the list is tab-separated to make it spreadsheet friendly.
 
 =head1 PARAMETERS
 
@@ -71,7 +95,18 @@ where the pattern doesn't match.
 =item -remove
 
 Remove the listed items from the cache, with the exception of items that
-correspond to aliases in the user profile.
+correspond to aliases in the user profile.  All items will be reported
+with the word "removed" before the location name.  You should list
+the files first and visually verify they are the ones you want to
+remove before using this option.
+
+=item -above <int>
+
+Select cache files where the size is greater than <int>.
+
+=item -below <int>
+
+Select cache files where the size is less than <int>.
 
 =item -cachedir <dir>
 
