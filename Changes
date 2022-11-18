@@ -12,6 +12,7 @@ v0.0.011       ????-??-??
   - renamed _get_profile_options and _get_profile_filespec to get_profile_options and get_profile_filespec
   - moved testing of get_profile_options and get_profile_filespec from 22 to 14_options.t
   - added ghcn_cache script for cache maintenance
+  - removed check for valid cachedir that was preventing ghcn_fetch working without a cache
 
 
 v0.0.010       2022-11-10

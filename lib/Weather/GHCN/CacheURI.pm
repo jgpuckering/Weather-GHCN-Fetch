@@ -93,7 +93,6 @@ field $_refresh     :reader :param  {};
 BUILD ($cachedir, $refresh) {
     $_cachedir //= $cachedir;
     $_refresh  //= lc $refresh;
-    croak '*E* cache directory does not exist' unless -d $cachedir;
     croak '*E* invalid refresh option' unless $_refresh =~ $REFRESH_RE;
 }
 
