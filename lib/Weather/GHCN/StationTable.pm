@@ -989,7 +989,7 @@ Returns a hash of Weather::GHCN::Station objects, keyed on station id.
 Normally, load_stations will fetch the stations list from the cache,
 or if not in the cache (or its stale) then from the GHCN web repository.
 However, an API caller might want to obtain the station text by some
-other means, in which case it can use the option 'content' keyword
+other means, in which case it can use the optional 'content' keyword
 argument to just pass in a scalar containing the station text.
 
 =item option: country <str>
