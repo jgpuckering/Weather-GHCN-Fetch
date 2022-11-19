@@ -101,14 +101,6 @@ const my $PROFILE_FILE => '~/.ghcn_fetch.yaml';
 __PACKAGE__->run( \@ARGV ) unless caller;
 
 #-----------------------------------------------------------------------
-=head1 SUBROUTINES
-
-=head2 run ( \@ARGV )
-
-Invoke this subroutine, passing in a reference to @ARGV, in order to
-manage a cache folder used by ghcn modules and scripts.
-
-=cut
 
 sub run ($progname, $argv_aref) {
 
@@ -147,31 +139,6 @@ sub run ($progname, $argv_aref) {
     return;
 }
 
-sub match_type ($t) {
-    return $TRUE if not $Opt->type;
-    my @types = split //, $Opt->type;
-    my $matched = 0;
-    foreach my $u (@types) {
-        $matched++ if uc $u eq uc $t
-    }
-    return $matched++
-}
-
-sub outclip () {
-    state $old_fh;
-    state $output;
-
-    if ($old_fh) {
-        Win32::Clipboard->new()->Set( $output );
-        select $old_fh;     ## no critic [ProhibitOneArgSelect]
-    } else {
-        open my $new_fh, '>', \$output
-            or die 'Unable to open buffer for write';
-        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)
-    }
-
-    return;
-}
 
 sub get_cacheobj ($profile, $cachedir) {
     my $ghcn = Weather::GHCN::StationTable->new;
@@ -186,6 +153,72 @@ sub get_cacheobj ($profile, $cachedir) {
 
     return $ghcn, path($ghcn->cachedir);
 }
+
+
+sub get_options ($argv_aref) {
+
+    my @options = (
+        'country:s',            # filter by country
+        'state|prov:s',         # filter by state or province
+        'location:s',           # filter by localtime
+        'remove',               # remove cached daily files (except aliases)
+        'clean',                # remove all files from the cache
+        'invert|v',             # invert -location selection criteria
+        'above:i',              # select files with size > than this
+        'below:i',              # select file with size < this
+        'age:i',                # select file if >= age
+        'type:s',               # select based on type
+        'cachedir:s',           # cache location
+        'profile:s',            # profile file
+        'outclip',              # output data to the Windows clipboard
+        'help','usage|?',       # help
+    );
+
+    my %opt;
+
+    # create a list of option key names by stripping the various adornments
+    my @keys = map { (split m{ [!+=:|] }xms)[0] } grep { !ref  } @options;
+    # initialize all possible options to undef
+    @opt{ @keys } = ( undef ) x @keys;
+
+    GetOptionsFromArray($argv_aref, \%opt, @options)
+        or pod2usage(2);
+        
+    # Make %opt into an object and name it the same as what we usually
+    # call the global options object.  Note that this doesn't set the
+    # global -- the script will have to do that using the return value
+    # from this function.  But, what this does is allow us to call
+    # $Opt->help and other option within this function using the same
+    # syntax as what we use in the script.  This is handy if you need
+    # to rename option '-foo' to '-bar' because you can do a find/replace
+    # on '$Opt->foo' and you'll get any instances of it here as well as
+    # in the script.
+
+    ## no critic [Capitalization]
+    ## no critic [ProhibitReusedNames]
+    my $Opt = _wrap_hash \%opt;
+
+    pod2usage(1)             if $Opt->usage;
+    pod2usage(-verbose => 2) if $Opt->help;
+
+    return $Opt;
+}
+
+
+sub keep_aliases ($profile_href) {
+    return {} if not $profile_href;
+    my $aliases_href = $profile_href->{aliases};
+    return {} if not $aliases_href;
+    my %keep;
+    foreach my $stn_str (values $aliases_href->%*) {
+        my @stns = split $COMMA, $stn_str;
+        foreach my $stn (@stns) {
+            $keep{$stn} = 1;
+        }
+    }
+    return \%keep;
+}
+
 
 sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
 
@@ -240,6 +273,35 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
 
     return \%stnfiles, \%txtfiles;
 }
+
+
+sub match_type ($t) {
+    return $TRUE if not $Opt->type;
+    my @types = split //, $Opt->type;
+    my $matched = 0;
+    foreach my $u (@types) {
+        $matched++ if uc $u eq uc $t
+    }
+    return $matched++
+}
+
+
+sub outclip () {
+    state $old_fh;
+    state $output;
+
+    if ($old_fh) {
+        Win32::Clipboard->new()->Set( $output );
+        select $old_fh;     ## no critic [ProhibitOneArgSelect]
+    } else {
+        open my $new_fh, '>', \$output
+            or die 'Unable to open buffer for write';
+        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)
+    }
+
+    return;
+}
+
 
 sub report_daily_files ($stations_href, $keep_href) {
 
@@ -301,6 +363,7 @@ sub report_daily_files ($stations_href, $keep_href) {
     return $total_kb;
 }
 
+
 sub report_catalog_files ($txtfiles_href) {
     my $total_kb = 0;
     foreach my $k (sort keys $txtfiles_href->%*) {
@@ -311,89 +374,9 @@ sub report_catalog_files ($txtfiles_href) {
     return $total_kb;
 }
 
-sub keep_aliases ($profile_href) {
-    return {} if not $profile_href;
-    my $aliases_href = $profile_href->{aliases};
-    return {} if not $aliases_href;
-    my %keep;
-    foreach my $stn_str (values $aliases_href->%*) {
-        my @stns = split $COMMA, $stn_str;
-        foreach my $stn (@stns) {
-            $keep{$stn} = 1;
-        }
-    }
-    return \%keep;
-}
 
 sub round ($n) {
     return int($n + .5);
-}
-
-########################################################################
-# Script-standard Subroutines
-########################################################################
-
-=head2 get_options ( \@ARGV )
-
-B<get_options> encapsulates everything we need to process command line
-options, or to set options when invoking this script from a test script.
-
-Normally it's called by passing a reference to @ARGV; from a test script
-you'd set up a local array variable to specify the options.
-
-By convention, you should set up a file-scoped lexical variable named
-$Opt and set it in the mainline using the return value from this function.
-Then all options can be accessed used $Opt->option notation.
-
-=cut
-
-sub get_options ($argv_aref) {
-
-    my @options = (
-        'country:s',            # filter by country
-        'state|prov:s',         # filter by state or province
-        'location:s',           # filter by localtime
-        'remove',               # remove cached daily files (except aliases)
-        'clean',                # remove all files from the cache
-        'invert|v',             # invert -location selection criteria
-        'above:i',              # select files with size > than this
-        'below:i',              # select file with size < this
-        'age:i',                # select file if >= age
-        'type:s',               # select based on type
-        'cachedir:s',           # cache location
-        'profile:s',            # profile file
-        'outclip',              # output data to the Windows clipboard
-        'help','usage|?',       # help
-    );
-
-    my %opt;
-
-    # create a list of option key names by stripping the various adornments
-    my @keys = map { (split m{ [!+=:|] }xms)[0] } grep { !ref  } @options;
-    # initialize all possible options to undef
-    @opt{ @keys } = ( undef ) x @keys;
-
-    GetOptionsFromArray($argv_aref, \%opt, @options)
-        or pod2usage(2);
-        
-    # Make %opt into an object and name it the same as what we usually
-    # call the global options object.  Note that this doesn't set the
-    # global -- the script will have to do that using the return value
-    # from this function.  But, what this does is allow us to call
-    # $Opt->help and other option within this function using the same
-    # syntax as what we use in the script.  This is handy if you need
-    # to rename option '-foo' to '-bar' because you can do a find/replace
-    # on '$Opt->foo' and you'll get any instances of it here as well as
-    # in the script.
-
-    ## no critic [Capitalization]
-    ## no critic [ProhibitReusedNames]
-    my $Opt = _wrap_hash \%opt;
-
-    pod2usage(1)             if $Opt->usage;
-    pod2usage(-verbose => 2) if $Opt->help;
-
-    return $Opt;
 }
 
 1;
