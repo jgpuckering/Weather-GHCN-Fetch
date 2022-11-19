@@ -75,7 +75,6 @@ use Math::Trig;
 use Path::Tiny;
 use Weather::GHCN::Common        qw( :all );
 use Weather::GHCN::TimingStats;
-#use Hash::Wrap          {-lvalue => 1, -defined => 1, -as => '_wrap_hash' };
 
 # included so consumers of this module don't have to include these
 use Weather::GHCN::CacheURI;
@@ -360,7 +359,7 @@ method get_footer ( %args ) {
     push @output, $TAB . '- SNWD is aggregated by max().';
     push @output, '  * Decades begin on Jan 1 in calendar years ending in zero.';
     push @output, '  * Seasonal decades/year/quarters begin Dec 1 of the previous calendar year.';
-    push @output, '  * Quality is the ratio of non-missing data days to days in the year, as a $\'tage.';
+    push @output, '  * Quality is the ratio of non-missing data days to days in the year, as a %\'tage.';
 
     return $return_list ? @output : tsv(\@output);
 }
@@ -1035,7 +1034,7 @@ cos-surface-network-gsn-program-overview>
 =cut
 
 method load_stations (%args) {
-    
+
     my $content = $args{content} // $self->_fetch_url( $GHCN_STN_LIST_URL, 'URI::Fetch_stn');
 
     if ( $content =~ m{<title>(.*?)</title>}xms ) {
@@ -1048,7 +1047,8 @@ method load_stations (%args) {
 
     $_tstats->start('Parse_stn');
 
-    my $is_stnid_filter = keys $_stnid_filter_href->%*
+    my $is_stnid_filter;
+    $is_stnid_filter = keys %{ $_stnid_filter_href }
         if $_stnid_filter_href;
 
     my %stnidx;
@@ -1063,7 +1063,6 @@ method load_stations (%args) {
         # (stationid).(latitu).(longitu).(elev).st.--name-----------------------
         # ACW00011604  17.1167  -61.7833   10.1    ST JOHNS COOLIDGE FLD
 
-        ## no critic [ProhibitDoubleSigils]
         ## no critic [ProhibitMagicNumbers]
         my $id = substr $line, 0, 11;
 
@@ -1153,7 +1152,7 @@ placemarks across time.
 =item argument: list
 
 If the argument list contains the 'list' keyword and a true value,
-then a perl list is returned.  Otherwise, a string consisting of lines 
+then a perl list is returned.  Otherwise, a string consisting of lines
 of text is returned.
 
 =item option: kml
@@ -1225,14 +1224,14 @@ stations that meet the selection criteria.
 =item argument: list
 
 If the argument list contains the 'list' keyword and a true value,
-then a perl list is returned.  Otherwise, a string consisting of lines 
+then a perl list is returned.  Otherwise, a string consisting of lines
 of text is returned.
 
 =item argument: curl
 
 If the argument list contains the 'curl' keyword and a true value,
 then the output will be a set of lines that can be saved in a file
-for subsequent input to the B<curl> program using the B<-K> option.  
+for subsequent input to the B<curl> program using the B<-K> option.
 This facilitates bulk fetching of .dly files into the cache.
 
 =back
@@ -1244,16 +1243,16 @@ method report_urls ( %arg ) {
 
     my @output;
 
-    push @output, "# Use curl -K <this_file> to download these URL's"
+    push @output, '# Use curl -K <this_file> to download these URL\'s'
         if $arg{curl};
-        
+
     foreach my $stn ( values %_station ) {
         next if $stn->error_count;
         # TODO:  use ->sets to get a list of spans and use the first span instead of splitting run_list
         my ($start, $end) = split m{ [-] }xms, $stn->active;
-        
+
         if ( $arg{curl} ) {
-            my @parts = split '/', $stn->url;
+            my @parts = split m{ [/] }xms, $stn->url;
             push @output, 'output = ' . $parts[-1];
             push @output, 'url = ' . $stn->url;
         } else {
@@ -1969,10 +1968,10 @@ method _report_gaps ($stn, $gaps_href) {
               ( $opt_range_nrs and not $opt_range_nrs->contains($yyyy)
               or
                 $Opt->anomalies and not $opt_baseline_nrs->contains($yyyy) );
-        
+
         my $gap_months = $EMPTY;
         my $days_missing = 0;
-      
+
 
         ## no critic [ProhibitDoubleSigils]
         ## no critic [ProhibitMagicNumbers]
@@ -2028,16 +2027,16 @@ method _report_gaps ($stn, $gaps_href) {
             my $days_nrs = rng_new( @days_with_data );
 
             my $day_gap_nrs = $days_in_month_nrs->diff($days_nrs);
-            
+
             $days_missing += $day_gap_nrs->cardinality;
 
             $gap_text .= $SPACE . _month_names($mm) . '[' . $day_gap_nrs->as_string . ']'
                 unless $day_gap_nrs->is_empty;
         }
-        
-        $gap_text = join ' ', $gap_months, $gap_text
+
+        $gap_text = join $SPACE, $gap_months, $gap_text
             if $gap_months;
-            
+
         $gap_text =~ s{ \A \s+ }{}xms;  # trim leading whitespace
 
         if ( $gap_text !~ m{\A \s* \Z}xms ) {
