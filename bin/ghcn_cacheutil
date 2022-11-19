@@ -21,7 +21,7 @@ ghcn_cacheutil - Manage the cache used by ghcn_fetch
 =head1 SYNOPSIS
 
     ghcn_cacheutil [-location <dir>] [-couuntry <str>] [-state <str>]
-                   [-invert|v] [-above <int>] [-below <int>]
+                   [-invert|v] [-above <int>] [-below <int>] [-type <str>]
                    [-remove] [-clean]
                    [-cachedir <dir>] [-profile <file>] [-outclip]
 
@@ -114,6 +114,12 @@ Select cache files where the size is greater than <int>.
 =item -below <int>
 
 Select cache files where the size is less than <int>.
+
+-item -type <str>
+
+There are three types of cache entries:  Daily, Aliased-Daily, and
+Catalog.  You can filter the list by providing a string containing
+any combination of D, A and C.
 
 =item -clean
 

@@ -128,20 +128,33 @@ sub run ($progname, $argv_aref) {
     # send print output to the Windows clipboard if requested and doable
     outclip() if $Opt->outclip and $USE_WINCLIP;
 
-    my $stations_href = load_cached_stations($ghcn, $cacheobj);
-
-    return if 0 == keys $stations_href->%*;
-
     my $keep_href = keep_aliases($ghcn->profile_href);
 
-    report_stations($stations_href, $keep_href);
-    
+    my ($stnfiles_href, $txtfiles_href) = load_cached_files($ghcn, $cacheobj, $keep_href);
+
+    my $total_kb = report_daily_files($stnfiles_href, $keep_href);
+
+    $total_kb += report_catalog_files($txtfiles_href)
+        if match_type('C');
+
+    say '';
+    say "Total cache size: ", commify($total_kb);
     say 'Cache location: ', $cacheobj;
 
     # restore print output to stdout
     outclip();
 
     return;
+}
+
+sub match_type ($t) {
+    return $TRUE if not $Opt->type;
+    my @types = split //, $Opt->type;
+    my $matched = 0;
+    foreach my $u (@types) {
+        $matched++ if uc $u eq uc $t
+    }
+    return $matched++
 }
 
 sub outclip () {
@@ -174,34 +187,32 @@ sub get_cacheobj ($profile, $cachedir) {
     return $ghcn, path($ghcn->cachedir);
 }
 
-sub load_cached_stations ($ghcn, $cacheobj) {
+sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
 
-    my @stns =
-        map { $_->basename('.dly') }
-            grep { m{ [.]dly \Z }xms }
-                $cacheobj->children;
-
-    if (not @stns) {
-        say {*STDERR} "*I* no daily data in the cache";
-        return;
-    }
-
-    my %filter;
-    $filter{$_} = 1 for @stns;
-
-    $ghcn->stnid_filter_href( \%filter );
-
-    my @files = path($cacheobj)->children;
+    my @files = $cacheobj->children;
 
     if (not @files) {
         say {*STDERR} '*I* cache is empty';
         return {};
     }
 
-    if (not path($cacheobj, 'ghcnd-stations.txt')->exists) {
-        say {*STDERR} '*W* no ghcnd-stations.txt file in the cache';
-        say {*STDERR} '*W* fallback to listing entire cache folder';
-        say join "\n", @files;
+    my %txtfiles;
+    my %filter;
+    foreach my $po (@files) {
+        my $bname = $po->basename;
+        if ( $bname =~ m{ [.]txt \Z}xms ) {
+            $txtfiles{$bname} = round($po->size/1024);
+            next;
+        }
+        my $stnid = $po->basename('.dly');
+        $filter{$stnid} = 1;
+    }
+
+    $ghcn->stnid_filter_href( \%filter );
+
+    if (keys %txtfiles == 0) {
+        say {*STDERR} '*W* no station catalog files (ghcnd-*.txt) in the cache - resorting to a simple file list';
+        say $_->basename for @files;
         return {};
     }
 
@@ -212,25 +223,29 @@ sub load_cached_stations ($ghcn, $cacheobj) {
     my @stations = $ghcn->get_stations(list => 1, no_header => 1);
     my @hdr = Weather::GHCN::Station::Headings;
 
-    my %stations;
+    my %stnfiles;
     foreach my $stn_row (@stations) {
         my %stn;
         @stn{@hdr} = $stn_row->@*;
-        my $pathobj = path($cacheobj, $stn{StationId} . '.dly');
+
+        my $stnid = $stn{StationId};
+        my $pathobj = path($cacheobj, $stnid . '.dly');
+
+        $stn{Type} = $keep_href->{$stnid} ? 'A' : 'D';
         $stn{Size} = $pathobj->size;
         $stn{Age} = int -M $pathobj->stat;
         $stn{PathObj} = $pathobj;
-        $stations{$stn{StationId}} = \%stn;
+        $stnfiles{$stn{StationId}} = \%stn;
     }
 
-    return \%stations;
+    return \%stnfiles, \%txtfiles;
 }
 
-sub report_stations ($stations_href, $keep_href) {
+sub report_daily_files ($stations_href, $keep_href) {
 
-    printf "%-10s  %2s %2s %-9s %6s %4s %s\n", qw(StationId Co St Active Kb Age Location)
+    printf "%s %-10s  %2s %2s %-9s %6s %4s %s\n", qw(T StationId Co St Active Kb Age Location)
         unless $Opt->remove;
-        
+
     my $total_kb = 0;
     my @removed;
 
@@ -238,14 +253,16 @@ sub report_stations ($stations_href, $keep_href) {
         my $stn = $stations_href->{$stnid};
         my $loc = $Opt->location;
 
+        next unless match_type( $stn->{Type} );
+
         next if $Opt->country and $stn->{Country} ne $Opt->country;
         next if $Opt->state   and $stn->{State}   ne $Opt->state;
 
-        my $kb = int($stn->{Size} / 1024 + 0.5);
+        my $kb = round($stn->{Size} / 1024);
 
         next if $Opt->above and $kb <= $Opt->above;
         next if $Opt->below and $kb >= $Opt->below;
-        
+
         next if $Opt->age and $stn->{Age} < $Opt->age;
 
         if ($Opt->invert) {
@@ -261,8 +278,9 @@ sub report_stations ($stations_href, $keep_href) {
             $stn->{PathObj}->remove;
             next;
         }
-        
-        printf "%10s %2s %2s %9s %6s %4s %s\n",
+
+        printf "%s %10s %2s %2s %9s %6s %4s %s\n",
+            $stn->{Type},
             $stn->{StationId},
             $stn->{Country},
             $stn->{State},
@@ -278,12 +296,19 @@ sub report_stations ($stations_href, $keep_href) {
         foreach my $s (@removed) {
             say $s;
         }
-    } else {       
-        say '';
-        say "Total cache size: ", commify($total_kb);
     }
 
-    return;
+    return $total_kb;
+}
+
+sub report_catalog_files ($txtfiles_href) {
+    my $total_kb = 0;
+    foreach my $k (sort keys $txtfiles_href->%*) {
+        my $kb = $txtfiles_href->{$k};
+        $total_kb += $kb;
+        printf "%s %-27s %6s\n", 'C' ,$k, commify($kb);
+    }
+    return $total_kb;
 }
 
 sub keep_aliases ($profile_href) {
@@ -298,6 +323,10 @@ sub keep_aliases ($profile_href) {
         }
     }
     return \%keep;
+}
+
+sub round ($n) {
+    return int($n + .5);
 }
 
 ########################################################################
@@ -330,6 +359,7 @@ sub get_options ($argv_aref) {
         'above:i',              # select files with size > than this
         'below:i',              # select file with size < this
         'age:i',                # select file if >= age
+        'type:s',               # select based on type
         'cachedir:s',           # cache location
         'profile:s',            # profile file
         'outclip',              # output data to the Windows clipboard
@@ -345,7 +375,7 @@ sub get_options ($argv_aref) {
 
     GetOptionsFromArray($argv_aref, \%opt, @options)
         or pod2usage(2);
-
+        
     # Make %opt into an object and name it the same as what we usually
     # call the global options object.  Note that this doesn't set the
     # global -- the script will have to do that using the return value
