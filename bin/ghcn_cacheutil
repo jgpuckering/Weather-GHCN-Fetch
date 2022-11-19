@@ -35,26 +35,30 @@ This script provides an easy way to manage the cache used by ghcn_fetch
 Without any parameters, ghcn_cacheutil will list the files in the 
 default cache, as defined in the user profile file (typically 
 ~/.ghcn_fetch.yaml).  You can also specify the profile file or the
-cachefile using parameters.
+cache directory using parameters.
 
 There are two kinds of cached files:  .txt files that contain station
 metadata, and .dly files which contain daily weather data for a specific
 station.  The .txt files are normally excluded from the list since
 it usually makes sense to keep these files around for reuse.  
 
-The -remove option will remove the files that are listed.
-
 The script provides selection parameters similar to ghcn_fetch so
 that the list of stations can be filtered by country, state (or province),
-and location name (or station id).  This facilitates selective cleanup.
+and location name (or station id).  
+
+The -remove option will remove the files that are listed.  
 
 For example, if you've just done some analysis of stations in Maine and
 don't plan to reuse that data in the near future, you can clean up
 the cache using ghcn_cacheutil -country US -state ME -remove.
 
+Typically, you'll use filtering options to see a list of files, 
+adjusting the filters until you have the list of files you want to 
+remove.  Then you'll repeat the command, adding -remove to do the 
+cleanup.
+
 The -clean option will remove all files from the cache.
 
-Output of the list is tab-separated to make it spreadsheet friendly.
 
 =head1 PARAMETERS
 
@@ -82,6 +86,7 @@ Filter the station list to include only those within the specified
 Filter the station list to include only those whose name matches the
 specified pattern.  For a starts-with match, prefix the pattern with
 ^ (or \A).  For an ends-with match, suffix the pattern with $ (or \Z).
+Matching is case-insensitive.
 
 You can also specify a station id (e.g. CA006105978) or a
 comma-delimited list of station id's (e.g. CA006105978,USC00336346).

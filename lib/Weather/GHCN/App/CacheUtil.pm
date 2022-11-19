@@ -135,6 +135,8 @@ sub run ($progname, $argv_aref) {
     my $keep_href = keep_aliases($ghcn->profile_href);
 
     report_stations($stations_href, $keep_href);
+    
+    say 'Cache location: ', $cacheobj;
 
     # restore print output to stdout
     outclip();
@@ -216,6 +218,7 @@ sub load_cached_stations ($ghcn, $cacheobj) {
         @stn{@hdr} = $stn_row->@*;
         my $pathobj = path($cacheobj, $stn{StationId} . '.dly');
         $stn{Size} = $pathobj->size;
+        $stn{Age} = int -M $pathobj->stat;
         $stn{PathObj} = $pathobj;
         $stations{$stn{StationId}} = \%stn;
     }
@@ -225,46 +228,60 @@ sub load_cached_stations ($ghcn, $cacheobj) {
 
 sub report_stations ($stations_href, $keep_href) {
 
-    say join "\t", qw(StationId Country State Active Bytes Removed Location);
-    my $total_size = 0;
+    printf "%-10s  %2s %2s %-9s %6s %4s %s\n", qw(StationId Co St Active Kb Age Location)
+        unless $Opt->remove;
+        
+    my $total_kb = 0;
+    my @removed;
 
     foreach my $stnid (sort keys $stations_href->%*) {
         my $stn = $stations_href->{$stnid};
         my $loc = $Opt->location;
 
-        next if $Opt->country  and $stn->{Country}  ne $Opt->country;
-        next if $Opt->state    and $stn->{State}    ne $Opt->state;
-        next if $Opt->above    and $stn->{Size}     <= $Opt->above;
-        next if $Opt->below    and $stn->{Size}     >= $Opt->below;
+        next if $Opt->country and $stn->{Country} ne $Opt->country;
+        next if $Opt->state   and $stn->{State}   ne $Opt->state;
+
+        my $kb = int($stn->{Size} / 1024 + 0.5);
+
+        next if $Opt->above and $kb <= $Opt->above;
+        next if $Opt->below and $kb >= $Opt->below;
+        
+        next if $Opt->age and $stn->{Age} < $Opt->age;
 
         if ($Opt->invert) {
-            next if $Opt->location and $stn->{Location} =~ m{ $loc }xmsi;
+            next if $Opt->location and $stn->{Location} =~ m{$loc}msi;
         } else {
-            next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;
+            next if $Opt->location and $stn->{Location} !~ m{$loc}msi;
         }
 
+        $total_kb += $kb;
 
-        my $size = sprintf '%10s', commify( $stn->{Size} );
-        $total_size += $stn->{Size};
-
-        my $removed = $EMPTY;
         if ( $Opt->remove and not $keep_href->{$stnid} ) {
+            push @removed, $stnid . ' ' . $stn->{Location};
             $stn->{PathObj}->remove;
-            $removed = 'removed',
+            next;
         }
-
-        say join "\t",
+        
+        printf "%10s %2s %2s %9s %6s %4s %s\n",
             $stn->{StationId},
             $stn->{Country},
             $stn->{State},
             $stn->{Active},
-            $size,
-            $removed,
+            sprintf('%6s', commify( $kb )),
+            $stn->{Age},
             $stn->{Location},
             ;
     }
-    say '';
-    say "Total cache size: \t\t\t\t", commify($total_size);
+
+    if (@removed) {
+        say 'Daily data removed:';
+        foreach my $s (@removed) {
+            say $s;
+        }
+    } else {       
+        say '';
+        say "Total cache size: ", commify($total_kb);
+    }
 
     return;
 }
@@ -312,6 +329,7 @@ sub get_options ($argv_aref) {
         'invert|v',             # invert -location selection criteria
         'above:i',              # select files with size > than this
         'below:i',              # select file with size < this
+        'age:i',                # select file if >= age
         'cachedir:s',           # cache location
         'profile:s',            # profile file
         'outclip',              # output data to the Windows clipboard
