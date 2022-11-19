@@ -22,7 +22,7 @@ ghcn_cacheutil - Manage the cache used by ghcn_fetch
 
     ghcn_cacheutil [-location <dir>] [-couuntry <str>] [-state <str>]
                    [-invert|v] [-above <int>] [-below <int>]
-                   [-remove] 
+                   [-remove] [-clean]
                    [-cachedir <dir>] [-profile <file>] [-outclip]
 
     ghcn_cacheutil [--help | -? | --usage]
@@ -42,7 +42,7 @@ metadata, and .dly files which contain daily weather data for a specific
 station.  The .txt files are normally excluded from the list since
 it usually makes sense to keep these files around for reuse.  
 
-The -remove option will remove files that are listed.
+The -remove option will remove the files that are listed.
 
 The script provides selection parameters similar to ghcn_fetch so
 that the list of stations can be filtered by country, state (or province),
@@ -51,6 +51,8 @@ and location name (or station id).  This facilitates selective cleanup.
 For example, if you've just done some analysis of stations in Maine and
 don't plan to reuse that data in the near future, you can clean up
 the cache using ghcn_cacheutil -country US -state ME -remove.
+
+The -clean option will remove all files from the cache.
 
 Output of the list is tab-separated to make it spreadsheet friendly.
 
@@ -107,6 +109,10 @@ Select cache files where the size is greater than <int>.
 =item -below <int>
 
 Select cache files where the size is less than <int>.
+
+=item -clean
+
+Remove all files from the cache.
 
 =item -cachedir <dir>
 

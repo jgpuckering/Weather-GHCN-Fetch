@@ -114,10 +114,23 @@ sub run ($progname, $argv_aref) {
 
     $Opt = get_options($argv_aref);
 
+    my ($ghcn, $cacheobj) = get_cacheobj($Opt->profile, $Opt->cachedir);
+
+    if ($Opt->clean) {
+        my @errors = $ghcn->cache_obj->clean_cache();
+        if (@errors) {
+            say {*STDERR} join "\n", @errors;
+            exit 1;
+        }
+        exit;
+    }
+
     # send print output to the Windows clipboard if requested and doable
     outclip() if $Opt->outclip and $USE_WINCLIP;
 
-    my ($ghcn, $stations_href) = load_cached_stations($Opt->profile, $Opt->cachedir);
+    my $stations_href = load_cached_stations($ghcn, $cacheobj);
+
+    return if 0 == keys $stations_href->%*;
 
     my $keep_href = keep_aliases($ghcn->profile_href);
 
@@ -125,7 +138,7 @@ sub run ($progname, $argv_aref) {
 
     # restore print output to stdout
     outclip();
-    
+
     return;
 }
 
@@ -139,14 +152,13 @@ sub outclip () {
     } else {
         open my $new_fh, '>', \$output
             or die 'Unable to open buffer for write';
-        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)        
-    } 
+        $old_fh = select $new_fh;  ## no critic (ProhibitOneArgSelect)
+    }
 
     return;
 }
 
-sub load_cached_stations ($profile, $cachedir) {
-#    my $cachedir //= path('c:/ghcn_cache');
+sub get_cacheobj ($profile, $cachedir) {
     my $ghcn = Weather::GHCN::StationTable->new;
 
     $profile //= $PROFILE_FILE;
@@ -157,19 +169,41 @@ sub load_cached_stations ($profile, $cachedir) {
     );
     die @errors if @errors;
 
-    my $cache_obj = path($ghcn->cachedir);
-    
+    return $ghcn, path($ghcn->cachedir);
+}
+
+sub load_cached_stations ($ghcn, $cacheobj) {
+
     my @stns =
         map { $_->basename('.dly') }
             grep { m{ [.]dly \Z }xms }
-                $cache_obj->children;
-                               
+                $cacheobj->children;
+
+    if (not @stns) {
+        say {*STDERR} "*I* no daily data in the cache";
+        return;
+    }
+
     my %filter;
     $filter{$_} = 1 for @stns;
 
     $ghcn->stnid_filter_href( \%filter );
 
-    my $stations_txt = path($cache_obj, 'ghcnd-stations.txt')->slurp;
+    my @files = path($cacheobj)->children;
+
+    if (not @files) {
+        say {*STDERR} '*I* cache is empty';
+        return {};
+    }
+
+    if (not path($cacheobj, 'ghcnd-stations.txt')->exists) {
+        say {*STDERR} '*W* no ghcnd-stations.txt file in the cache';
+        say {*STDERR} '*W* fallback to listing entire cache folder';
+        say join "\n", @files;
+        return {};
+    }
+
+    my $stations_txt = path($cacheobj, 'ghcnd-stations.txt')->slurp;
 
     $ghcn->load_stations( content => $stations_txt );
 
@@ -180,13 +214,13 @@ sub load_cached_stations ($profile, $cachedir) {
     foreach my $stn_row (@stations) {
         my %stn;
         @stn{@hdr} = $stn_row->@*;
-        my $pathobj = path($cache_obj, $stn{StationId} . '.dly');
+        my $pathobj = path($cacheobj, $stn{StationId} . '.dly');
         $stn{Size} = $pathobj->size;
         $stn{PathObj} = $pathobj;
         $stations{$stn{StationId}} = \%stn;
     }
 
-    return $ghcn, \%stations;
+    return \%stations;
 }
 
 sub report_stations ($stations_href, $keep_href) {
@@ -197,19 +231,19 @@ sub report_stations ($stations_href, $keep_href) {
     foreach my $stnid (sort keys $stations_href->%*) {
         my $stn = $stations_href->{$stnid};
         my $loc = $Opt->location;
-        
+
         next if $Opt->country  and $stn->{Country}  ne $Opt->country;
         next if $Opt->state    and $stn->{State}    ne $Opt->state;
         next if $Opt->above    and $stn->{Size}     <= $Opt->above;
         next if $Opt->below    and $stn->{Size}     >= $Opt->below;
-        
-        if ($Opt->invert) {            
-            next if $Opt->location and $stn->{Location} =~ m{ $loc }xmsi;            
+
+        if ($Opt->invert) {
+            next if $Opt->location and $stn->{Location} =~ m{ $loc }xmsi;
         } else {
-            next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;            
+            next if $Opt->location and $stn->{Location} !~ m{ $loc }xmsi;
         }
-                      
-        
+
+
         my $size = sprintf '%10s', commify( $stn->{Size} );
         $total_size += $stn->{Size};
 
@@ -274,6 +308,7 @@ sub get_options ($argv_aref) {
         'state|prov:s',         # filter by state or province
         'location:s',           # filter by localtime
         'remove',               # remove cached daily files (except aliases)
+        'clean',                # remove all files from the cache
         'invert|v',             # invert -location selection criteria
         'above:i',              # select files with size > than this
         'below:i',              # select file with size < this
