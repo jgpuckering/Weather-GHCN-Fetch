@@ -101,12 +101,23 @@ const my $PROFILE_FILE => '~/.ghcn_fetch.yaml';
 __PACKAGE__->run( \@ARGV ) unless caller;
 
 #-----------------------------------------------------------------------
+=head1 SUBROUTINES
+
+=head2 run ( \@ARGV )
+
+Invoke this subroutine, passing in a reference to @ARGV, in order to
+get list of cache contents or remove cache content.
+
+See ghnc_cache.pl -help for details.
+
+=cut
 
 sub run ($progname, $argv_aref) {
 
     $Opt = get_options($argv_aref);
 
-    my ($ghcn, $cacheobj) = get_cacheobj($Opt->profile, $Opt->cachedir);
+    my $ghcn = get_ghcn($Opt->profile, $Opt->cachedir);
+    my $cache_pto = path($ghcn->cachedir);  # pto = Path::Tiny object
 
     if ($Opt->clean) {
         my @errors = $ghcn->cache_obj->clean_cache();
@@ -120,9 +131,9 @@ sub run ($progname, $argv_aref) {
     # send print output to the Windows clipboard if requested and doable
     outclip() if $Opt->outclip and $USE_WINCLIP;
 
-    my $keep_href = keep_aliases($ghcn->profile_href);
+    my $alias_href = get_alias_stnids($ghcn->profile_href);
 
-    my $files_href = load_cached_files($ghcn, $cacheobj, $keep_href);
+    my $files_href = load_cached_files($ghcn, $cache_pto, $alias_href);
     
     if (keys $files_href->%* == 0) {
         say {*STDERR} '*I* cache is empty';
@@ -143,21 +154,32 @@ sub run ($progname, $argv_aref) {
 
     say '';
     say "Total cache size: ", commify($total_kb);
-    say 'Cache location: ', $cacheobj;
+    say 'Cache location: ', $cache_pto;
 
     # restore print output to stdout
-    outclip();
+    outclip() if $Opt->outclip and $USE_WINCLIP;
 
     return;
 }
 
+=head2 filter_files ( \%files )
+
+Given a hash containing Path::Tiny objects representing the files
+in the designed ghcn cache folder, apply the various filtering
+criteria options and mark those objects which match the criteria by
+inserting the key INCLUDE with value 1 in the %files entry for
+that object.
+
+Modifies the content of %files.  Void return.
+
+=cut
 
 sub filter_files ($files_href) {
     foreach my $fileid (sort keys $files_href->%*) {
         my $file = $files_href->{$fileid};
         my $loc = $Opt->location;
 
-        next unless match_type( $file->{Type} );
+        next unless match_type( $file->{Type}, $Opt->type );
 
         next if $Opt->country and $file->{Country} ne $Opt->country;
         next if $Opt->state   and $file->{State}   ne $Opt->state;
@@ -179,8 +201,16 @@ sub filter_files ($files_href) {
     }
 }
 
+=head2 get_ghcn ($profile, $cachedir)
 
-sub get_cacheobj ($profile, $cachedir) {
+Returns a Weather::GHCN::StationTable object initialized with a cache
+location obtained from $cachedir or, if $cachdir is undefined, from
+the cachedir option defined in the user profile specified by
+$profile.  If errors are encounterd, it dies and produces a list.
+
+=cut
+
+sub get_ghcn ($profile, $cachedir) {
     my $ghcn = Weather::GHCN::StationTable->new;
 
     $profile //= $PROFILE_FILE;
@@ -191,9 +221,22 @@ sub get_cacheobj ($profile, $cachedir) {
     );
     die @errors if @errors;
 
-    return $ghcn, path($ghcn->cachedir);
+    return $ghcn;
 }
 
+=head2 get_options ( \@ARGV )
+
+B<get_options> encapsulates everything we need to process command line
+options, or to set options when invoking this script from a test script.
+
+Normally it's called by passing a reference to @ARGV; from a test script
+you'd set up a local array variable to specify the options.
+
+By convention, you should set up a file-scoped lexical variable named
+$Opt and set it in the mainline using the return value from this function.
+Then all options can be accessed used $Opt->option notation.
+
+=cut
 
 sub get_options ($argv_aref) {
 
@@ -244,37 +287,52 @@ sub get_options ($argv_aref) {
     return $Opt;
 }
 
+=head2 get_alias_stnids ( \%profile )
 
-sub keep_aliases ($profile_href) {
+Read the hash obtained from the user profile file and find the alias
+definitions.  Return a hash of station id's that have been aliased.
+
+=cut
+
+sub get_alias_stnids ($profile_href) {
     return {} if not $profile_href;
     my $aliases_href = $profile_href->{aliases};
     return {} if not $aliases_href;
-    my %keep;
+    my %aliases;
     foreach my $stn_str (values $aliases_href->%*) {
         my @stns = split $COMMA, $stn_str;
         foreach my $stn (@stns) {
-            $keep{$stn} = 1;
+            $aliases{$stn} = 1;
         }
     }
-    return \%keep;
+    return \%aliases;
 }
 
+=head2 load_cached_files ($ghcn, $cache_pto, \%alias )
 
-sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
+Given a Weather::GHCN::StationTable object and a cache Path::Tiny
+object, and a hash of which files correspond to aliased stations,
+return a hash which combines the file information and the station
+information (where applicable) and categorizes each entry by type:
+D for daily data file, A for aliases station, and C for catalog files.
 
-    my @files = $cacheobj->children;
+=cut
+
+sub load_cached_files ($ghcn, $cache_pto, $alias_href) {
+
+    my @files = $cache_pto->children;
 
     return {} if not @files;
 
     my @txtfiles;
     my %filter;
-    foreach my $po (@files) {
-        my $bname = $po->basename;
+    foreach my $pto (@files) {
+        my $bname = $pto->basename;
         if ( $bname =~ m{ [.]txt \Z}xms ) {
-            push @txtfiles, $po;
+            push @txtfiles, $pto;
             next;
         }
-        my $stnid = $po->basename('.dly'); # removes the extension
+        my $stnid = $pto->basename('.dly'); # removes the extension
         $filter{$stnid} = 1;
     }
 
@@ -285,7 +343,7 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
         return {};
     }
 
-    my $stations_txt = path($cacheobj, 'ghcnd-stations.txt')->slurp;
+    my $stations_txt = path($cache_pto, 'ghcnd-stations.txt')->slurp;
 
     $ghcn->stnid_filter_href( \%filter );
     $ghcn->load_stations( content => $stations_txt );
@@ -299,25 +357,25 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
         @file{@hdr} = $stn_row->@*;
 
         my $fileid = $file{StationId};
-        my $pathobj = path($cacheobj, $fileid . '.dly');
+        my $pathobj = path($cache_pto, $fileid . '.dly');
 
-        $file{Type} = $keep_href->{$fileid} ? 'A' : 'D';
+        $file{Type} = $alias_href->{$fileid} ? 'A' : 'D';
         $file{Size} = $pathobj->size;
         $file{Age} = int -M $pathobj->stat;
         $file{PathObj} = $pathobj;
         $files{$file{StationId}} = \%file;
     }
 
-    foreach my $po (@txtfiles) {
+    foreach my $pto (@txtfiles) {
         my %file;
-        my $fileid = $po->basename('.txt');
+        my $fileid = $pto->basename('.txt');
         $fileid =~ s{ \A ghcnd- }{}xms;
         $file{StationId} = $fileid;
-        $file{Location} = $po->basename;
+        $file{Location} = $pto->basename;
         $file{Type} = 'C';
-        $file{Size} = $po->size;
-        $file{Age} = int -M $po->stat;
-        $file{PathObj} = $po;
+        $file{Size} = $pto->size;
+        $file{Age} = int -M $pto->stat;
+        $file{PathObj} = $pto;
         $files{$file{StationId}} = \%file;
     }
 
@@ -326,17 +384,57 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
     return \%files;
 }
 
+=head2 match_type ($file_type, $match_types)
 
-sub match_type ($t) {
-    return $TRUE if not $Opt->type;
-    my @types = split //, $Opt->type;
+Cache files are categorized by type:  D for .dly files, A for .dly files
+that correspond to user aliases, and C for .txt files.  The user can
+provide a -type option with a string to select based on type.  The
+string can contain any or all of the three letters.  This function
+is used to match the file type with the -type option.  Returns true
+if the $file_type letter (D, A or C) is found in the $match_types
+string.
+
+=cut
+
+sub match_type ($file_type, $match_types) {
+    return $TRUE if not $match_types;
+    my @types = split //, $match_types;
     my $matched = 0;
-    foreach my $u (@types) {
-        $matched++ if uc $u eq uc $t
+    foreach my $m (@types) {
+        $matched++ if uc $m eq uc $file_type
     }
     return $matched++
 }
 
+=head2 outclip ()
+
+When called initially, it redirects STDOUT to local variable so that
+printing is saved in memory.  On the subsequent call, it writes the
+content of the variable to the Windows Clipboard and resets STDOUT
+to its original state (usually the terminal).
+
+Since Windows::Clipboard is platform specific, calls to this subroutine
+should conditional.  The following pattern is recommended:
+
+    # modules for Windows only
+    use if $OSNAME eq 'MSWin32', 'Win32::Clipboard';
+
+    # is it ok to use Win32::Clipboard?
+    our $USE_WINCLIP = $OSNAME eq 'MSWin32';
+
+    # send print output to the Windows clipboard if requested and doable
+    outclip() if $Opt->outclip and $USE_WINCLIP;
+
+    ... print stuff
+    
+    # restore print output to stdout
+    outclip() if $Opt->outclip and $USE_WINCLIP;
+
+This subroutine relies on state variables.  It cannot be used in a 
+nested fashion.  It is best confined to main:: (or the top-level 
+subroutine).
+
+=cut
 
 sub outclip () {
     state $old_fh;
@@ -354,6 +452,22 @@ sub outclip () {
     return;
 }
 
+=head2 report_daily_files ($files_href)
+
+Given a hash of the cache file hash objects, each consisting of a
+merger of file properties and station properties, this subroutine
+will print a report listing those that were flagged for inclusion
+by filter_files().  
+
+Output is ordered by StationId.  Catalog (.txt) files don't have a 
+station id, so short version of the filename is used.  Since those 
+names are lowercase, they sort last in the the list.
+
+The Type of the file appears in the first column:  D for daily weather
+data files, A for daily weather data files that correspond to aliases
+defined in the user profile, and C for catalog files.
+
+=cut
 
 sub report_daily_files ($files_href) {
 
@@ -384,20 +498,14 @@ sub report_daily_files ($files_href) {
     return $total_kb;
 }
 
+=head2 round ($v)
 
-sub report_catalog_files ($txtfiles_href) {
-    my $total_kb = 0;
-    foreach my $k (sort keys $txtfiles_href->%*) {
-        my $kb = $txtfiles_href->{$k};
-        $total_kb += $kb;
-        printf "%s %-27s %6s\n", 'C' ,$k, commify($kb);
-    }
-    return $total_kb;
-}
+Round $v using the half-adjust method.  Returns an integer.
 
+=cut
 
-sub round ($n) {
-    return int($n + .5);
+sub round ($v) {
+    return int($v + .5);
 }
 
 1;
