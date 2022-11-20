@@ -114,7 +114,7 @@ sub run ($progname, $argv_aref) {
             say {*STDERR} join "\n", @errors;
             exit 1;
         }
-        exit;
+        return;
     }
 
     # send print output to the Windows clipboard if requested and doable
