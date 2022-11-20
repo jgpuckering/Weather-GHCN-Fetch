@@ -147,6 +147,34 @@ sub run ($progname, $argv_aref) {
 }
 
 
+sub filter_files ($files_href) {
+    foreach my $fileid (sort keys $files_href->%*) {
+        my $file = $files_href->{$fileid};
+        my $loc = $Opt->location;
+
+        next unless match_type( $file->{Type} );
+
+        next if $Opt->country and $file->{Country} ne $Opt->country;
+        next if $Opt->state   and $file->{State}   ne $Opt->state;
+
+        my $kb = round($file->{Size} / 1024);
+
+        next if $Opt->above and $kb <= $Opt->above;
+        next if $Opt->below and $kb >= $Opt->below;
+
+        next if $Opt->age and $file->{Age} < $Opt->age;
+
+        if ($Opt->invert) {
+            next if $Opt->location and $file->{Location} =~ m{$loc}msi;
+        } else {
+            next if $Opt->location and $file->{Location} !~ m{$loc}msi;
+        }
+        
+        $file->{INCLUDE} = 1;
+    }
+}
+
+
 sub get_cacheobj ($profile, $cachedir) {
     my $ghcn = Weather::GHCN::StationTable->new;
 
@@ -324,32 +352,6 @@ sub outclip () {
     return;
 }
 
-sub filter_files ($files_href) {
-    foreach my $fileid (sort keys $files_href->%*) {
-        my $file = $files_href->{$fileid};
-        my $loc = $Opt->location;
-
-        next unless match_type( $file->{Type} );
-
-        next if $Opt->country and $file->{Country} ne $Opt->country;
-        next if $Opt->state   and $file->{State}   ne $Opt->state;
-
-        my $kb = round($file->{Size} / 1024);
-
-        next if $Opt->above and $kb <= $Opt->above;
-        next if $Opt->below and $kb >= $Opt->below;
-
-        next if $Opt->age and $file->{Age} < $Opt->age;
-
-        if ($Opt->invert) {
-            next if $Opt->location and $file->{Location} =~ m{$loc}msi;
-        } else {
-            next if $Opt->location and $file->{Location} !~ m{$loc}msi;
-        }
-        
-        $file->{INCLUDE} = 1;
-    }
-}
 
 sub report_daily_files ($files_href) {
 
