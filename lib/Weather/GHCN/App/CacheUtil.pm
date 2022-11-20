@@ -122,12 +122,19 @@ sub run ($progname, $argv_aref) {
 
     my $keep_href = keep_aliases($ghcn->profile_href);
 
-    my ($stnfiles_href, $txtfiles_href) = load_cached_files($ghcn, $cacheobj, $keep_href);
+    my $stnfiles_href = load_cached_files($ghcn, $cacheobj, $keep_href);
+    
+    if ($Opt->remove) {
+        foreach my $stnid (sort keys $stnfiles_href->%*) {
+            my $stn = $stnfiles_href->{$stnid};
+            next unless $stn->{INCLUDE};
+            say {*STDERR} 'Removing ', $stn->{PathObj};
+            $stn->{PathObj}->remove;
+        }
+        return;
+    }
 
-    my $total_kb = report_daily_files($stnfiles_href, $keep_href);
-
-    $total_kb += report_catalog_files($txtfiles_href)
-        if match_type('C');
+    my $total_kb = report_daily_files($stnfiles_href);
 
     say '';
     say "Total cache size: ", commify($total_kb);
@@ -229,21 +236,20 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
         return {};
     }
 
-    my %txtfiles;
+    my @txtfiles;
     my %filter;
     foreach my $po (@files) {
         my $bname = $po->basename;
         if ( $bname =~ m{ [.]txt \Z}xms ) {
-            $txtfiles{$bname} = round($po->size/1024);
+            push @txtfiles, $po;
             next;
         }
-        my $stnid = $po->basename('.dly');
+        my $stnid = $po->basename('.dly'); # removes the extension
         $filter{$stnid} = 1;
     }
 
-    $ghcn->stnid_filter_href( \%filter );
 
-    if (keys %txtfiles == 0) {
+    if (@txtfiles == 0) {
         say {*STDERR} '*W* no station catalog files (ghcnd-*.txt) in the cache - resorting to a simple file list';
         say $_->basename for @files;
         return {};
@@ -251,6 +257,7 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
 
     my $stations_txt = path($cacheobj, 'ghcnd-stations.txt')->slurp;
 
+    $ghcn->stnid_filter_href( \%filter );
     $ghcn->load_stations( content => $stations_txt );
 
     my @stations = $ghcn->get_stations(list => 1, no_header => 1);
@@ -271,7 +278,22 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
         $stnfiles{$stn{StationId}} = \%stn;
     }
 
-    return \%stnfiles, \%txtfiles;
+    foreach my $po (@txtfiles) {
+        my %stn;
+        my $stnid = $po->basename('.txt');
+        $stnid =~ s{ \A ghcnd- }{}xms;
+        $stn{StationId} = $stnid;
+        $stn{Location} = $po->basename;
+        $stn{Type} = 'C';
+        $stn{Size} = $po->size;
+        $stn{Age} = int -M $po->stat;
+        $stn{PathObj} = $po;
+        $stnfiles{$stn{StationId}} = \%stn;
+    }
+
+    filter_files(\%stnfiles);
+    
+    return \%stnfiles;
 }
 
 
@@ -302,15 +324,7 @@ sub outclip () {
     return;
 }
 
-
-sub report_daily_files ($stations_href, $keep_href) {
-
-    printf "%s %-10s  %2s %2s %-9s %6s %4s %s\n", qw(T StationId Co St Active Kb Age Location)
-        unless $Opt->remove;
-
-    my $total_kb = 0;
-    my @removed;
-
+sub filter_files ($stations_href) {
     foreach my $stnid (sort keys $stations_href->%*) {
         my $stn = $stations_href->{$stnid};
         my $loc = $Opt->location;
@@ -332,16 +346,26 @@ sub report_daily_files ($stations_href, $keep_href) {
         } else {
             next if $Opt->location and $stn->{Location} !~ m{$loc}msi;
         }
+        
+        $stn->{INCLUDE} = 1;
+    }
+}
 
+sub report_daily_files ($stations_href) {
+
+    printf "%s %-11s %2s %2s %-9s %6s %4s %s\n", qw(T StationId Co St Active Kb Age Location);
+    
+    my $total_kb = 0;
+
+    foreach my $stnid (sort keys $stations_href->%*) {
+        my $stn = $stations_href->{$stnid};
+        next unless $stn->{INCLUDE};
+
+        my $kb = round($stn->{Size} / 1024);
         $total_kb += $kb;
-
-        if ( $Opt->remove and not $keep_href->{$stnid} ) {
-            push @removed, $stnid . ' ' . $stn->{Location};
-            $stn->{PathObj}->remove;
-            next;
-        }
-
-        printf "%s %10s %2s %2s %9s %6s %4s %s\n",
+       
+        no warnings 'uninitialized';
+        printf "%s %-11s %2s %2s %9s %6s %4s %s\n",
             $stn->{Type},
             $stn->{StationId},
             $stn->{Country},
@@ -351,13 +375,6 @@ sub report_daily_files ($stations_href, $keep_href) {
             $stn->{Age},
             $stn->{Location},
             ;
-    }
-
-    if (@removed) {
-        say 'Daily data removed:';
-        foreach my $s (@removed) {
-            say $s;
-        }
     }
 
     return $total_kb;
