@@ -122,19 +122,19 @@ sub run ($progname, $argv_aref) {
 
     my $keep_href = keep_aliases($ghcn->profile_href);
 
-    my $stnfiles_href = load_cached_files($ghcn, $cacheobj, $keep_href);
+    my $files_href = load_cached_files($ghcn, $cacheobj, $keep_href);
     
     if ($Opt->remove) {
-        foreach my $stnid (sort keys $stnfiles_href->%*) {
-            my $stn = $stnfiles_href->{$stnid};
-            next unless $stn->{INCLUDE};
-            say {*STDERR} 'Removing ', $stn->{PathObj};
-            $stn->{PathObj}->remove;
+        foreach my $fileid (sort keys $files_href->%*) {
+            my $file = $files_href->{$fileid};
+            next unless $file->{INCLUDE};
+            say {*STDERR} 'Removing ', $file->{PathObj};
+            $file->{PathObj}->remove;
         }
         return;
     }
 
-    my $total_kb = report_daily_files($stnfiles_href);
+    my $total_kb = report_daily_files($files_href);
 
     say '';
     say "Total cache size: ", commify($total_kb);
@@ -263,37 +263,37 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
     my @stations = $ghcn->get_stations(list => 1, no_header => 1);
     my @hdr = Weather::GHCN::Station::Headings;
 
-    my %stnfiles;
+    my %files;
     foreach my $stn_row (@stations) {
-        my %stn;
-        @stn{@hdr} = $stn_row->@*;
+        my %file;
+        @file{@hdr} = $stn_row->@*;
 
-        my $stnid = $stn{StationId};
-        my $pathobj = path($cacheobj, $stnid . '.dly');
+        my $fileid = $file{StationId};
+        my $pathobj = path($cacheobj, $fileid . '.dly');
 
-        $stn{Type} = $keep_href->{$stnid} ? 'A' : 'D';
-        $stn{Size} = $pathobj->size;
-        $stn{Age} = int -M $pathobj->stat;
-        $stn{PathObj} = $pathobj;
-        $stnfiles{$stn{StationId}} = \%stn;
+        $file{Type} = $keep_href->{$fileid} ? 'A' : 'D';
+        $file{Size} = $pathobj->size;
+        $file{Age} = int -M $pathobj->stat;
+        $file{PathObj} = $pathobj;
+        $files{$file{StationId}} = \%file;
     }
 
     foreach my $po (@txtfiles) {
-        my %stn;
-        my $stnid = $po->basename('.txt');
-        $stnid =~ s{ \A ghcnd- }{}xms;
-        $stn{StationId} = $stnid;
-        $stn{Location} = $po->basename;
-        $stn{Type} = 'C';
-        $stn{Size} = $po->size;
-        $stn{Age} = int -M $po->stat;
-        $stn{PathObj} = $po;
-        $stnfiles{$stn{StationId}} = \%stn;
+        my %file;
+        my $fileid = $po->basename('.txt');
+        $fileid =~ s{ \A ghcnd- }{}xms;
+        $file{StationId} = $fileid;
+        $file{Location} = $po->basename;
+        $file{Type} = 'C';
+        $file{Size} = $po->size;
+        $file{Age} = int -M $po->stat;
+        $file{PathObj} = $po;
+        $files{$file{StationId}} = \%file;
     }
 
-    filter_files(\%stnfiles);
+    filter_files(\%files);
     
-    return \%stnfiles;
+    return \%files;
 }
 
 
@@ -324,56 +324,56 @@ sub outclip () {
     return;
 }
 
-sub filter_files ($stations_href) {
-    foreach my $stnid (sort keys $stations_href->%*) {
-        my $stn = $stations_href->{$stnid};
+sub filter_files ($files_href) {
+    foreach my $fileid (sort keys $files_href->%*) {
+        my $file = $files_href->{$fileid};
         my $loc = $Opt->location;
 
-        next unless match_type( $stn->{Type} );
+        next unless match_type( $file->{Type} );
 
-        next if $Opt->country and $stn->{Country} ne $Opt->country;
-        next if $Opt->state   and $stn->{State}   ne $Opt->state;
+        next if $Opt->country and $file->{Country} ne $Opt->country;
+        next if $Opt->state   and $file->{State}   ne $Opt->state;
 
-        my $kb = round($stn->{Size} / 1024);
+        my $kb = round($file->{Size} / 1024);
 
         next if $Opt->above and $kb <= $Opt->above;
         next if $Opt->below and $kb >= $Opt->below;
 
-        next if $Opt->age and $stn->{Age} < $Opt->age;
+        next if $Opt->age and $file->{Age} < $Opt->age;
 
         if ($Opt->invert) {
-            next if $Opt->location and $stn->{Location} =~ m{$loc}msi;
+            next if $Opt->location and $file->{Location} =~ m{$loc}msi;
         } else {
-            next if $Opt->location and $stn->{Location} !~ m{$loc}msi;
+            next if $Opt->location and $file->{Location} !~ m{$loc}msi;
         }
         
-        $stn->{INCLUDE} = 1;
+        $file->{INCLUDE} = 1;
     }
 }
 
-sub report_daily_files ($stations_href) {
+sub report_daily_files ($files_href) {
 
     printf "%s %-11s %2s %2s %-9s %6s %4s %s\n", qw(T StationId Co St Active Kb Age Location);
     
     my $total_kb = 0;
 
-    foreach my $stnid (sort keys $stations_href->%*) {
-        my $stn = $stations_href->{$stnid};
-        next unless $stn->{INCLUDE};
+    foreach my $fileid (sort keys $files_href->%*) {
+        my $file = $files_href->{$fileid};
+        next unless $file->{INCLUDE};
 
-        my $kb = round($stn->{Size} / 1024);
+        my $kb = round($file->{Size} / 1024);
         $total_kb += $kb;
        
         no warnings 'uninitialized';
         printf "%s %-11s %2s %2s %9s %6s %4s %s\n",
-            $stn->{Type},
-            $stn->{StationId},
-            $stn->{Country},
-            $stn->{State},
-            $stn->{Active},
+            $file->{Type},
+            $file->{StationId},
+            $file->{Country},
+            $file->{State},
+            $file->{Active},
             sprintf('%6s', commify( $kb )),
-            $stn->{Age},
-            $stn->{Location},
+            $file->{Age},
+            $file->{Location},
             ;
     }
 
