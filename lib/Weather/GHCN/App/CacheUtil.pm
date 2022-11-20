@@ -124,6 +124,11 @@ sub run ($progname, $argv_aref) {
 
     my $files_href = load_cached_files($ghcn, $cacheobj, $keep_href);
     
+    if (keys $files_href->%* == 0) {
+        say {*STDERR} '*I* cache is empty';
+        return;
+    }
+    
     if ($Opt->remove) {
         foreach my $fileid (sort keys $files_href->%*) {
             my $file = $files_href->{$fileid};
@@ -259,10 +264,7 @@ sub load_cached_files ($ghcn, $cacheobj, $keep_href) {
 
     my @files = $cacheobj->children;
 
-    if (not @files) {
-        say {*STDERR} '*I* cache is empty';
-        return {};
-    }
+    return {} if not @files;
 
     my @txtfiles;
     my %filter;
