@@ -20,10 +20,13 @@ ghcn_cacheutil - Manage the cache used by ghcn_fetch
 
 =head1 SYNOPSIS
 
-    ghcn_cacheutil [-location <dir>] [-country <str>] [-state <str>]
-                   [-invert|v] [-above <int>] [-below <int>] [-type <str>]
+    ghcn_cacheutil [-location <dir> [-invert|v] ] 
+                   [-country <str>] [-state <str>]
+                   [-age <int>] [-size <int>] [-type <str>]
                    [-remove] [-clean]
-                   [-cachedir <dir>] [-profile <file>] [-outclip]
+                   [-cachedir <dir>] 
+                   [-profile <file>] 
+                   [-outclip]
 
     ghcn_cacheutil [--help | -? | --usage]
 
@@ -93,7 +96,7 @@ comma-delimited list of station id's (e.g. CA006105978,USC00336346).
 As a handy shortcut, mappings between user-defined names and a station
 id or id list can be defined in the locations section of .ghcn_fetch.yaml.
 
--item -invert
+=item -invert (or -v)
 
 Invert the -location selection criteria; i.e. select those stations
 where the pattern doesn't match.
@@ -106,13 +109,16 @@ with the word "removed" before the location name.  You should list
 the files first and visually verify they are the ones you want to
 remove before using this option.
 
-=item -above <int>
+=item -age <int>
 
-Select cache files where the size is greater than <int>.
+Select cache files where the file age is greater than or equal to 
+<int> days. Use negative <int> to select less than or equal to.
+To select zero days, use zero.
 
-=item -below <int>
+=item -size <int> (or -kb)
 
-Select cache files where the size is less than <int>.
+Select cache files where the size is greater than or equal to <int> 
+kilobytes. Use negative <int> to select less than or equal to.
 
 =item -type <str>
 

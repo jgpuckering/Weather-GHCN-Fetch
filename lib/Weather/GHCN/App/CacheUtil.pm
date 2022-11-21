@@ -186,10 +186,17 @@ sub filter_files ($files_href) {
 
         my $kb = round($file->{Size} / 1024);
 
-        next if $Opt->above and $kb <= $Opt->above;
-        next if $Opt->below and $kb >= $Opt->below;
+        if (defined $Opt->size) {
+            next unless $Opt->size <=  0 
+            ? $kb <= -$Opt->size
+            : $kb >=  $Opt->size;           
+        }
 
-        next if $Opt->age and $file->{Age} < $Opt->age;
+        if (defined $Opt->age) {
+            next unless $Opt->age <=  0 
+            ? $file->{Age} <= -$Opt->age
+            : $file->{Age} >=  $Opt->age;           
+        }
 
         if ($Opt->invert) {
             next if $Opt->location and $file->{Location} =~ m{$loc}msi;
@@ -247,8 +254,7 @@ sub get_options ($argv_aref) {
         'remove',               # remove cached daily files (except aliases)
         'clean',                # remove all files from the cache
         'invert|v',             # invert -location selection criteria
-        'above:i',              # select files with size > than this
-        'below:i',              # select file with size < this
+        'size|kb:i',            # select files by size in Kb
         'age:i',                # select file if >= age
         'type:s',               # select based on type
         'cachedir:s',           # cache location
