@@ -1306,7 +1306,7 @@ memory statistics.
 
 method set_options (%user_options) {
 
-    if ( defined $user_options{'profile'} ) {
+    if ( $user_options{'profile'} ) {
         # save the expanded profile file path in the object
         $_profile_file = path( $user_options{'profile'} )->absolute()->stringify;
         $_profile_href = Weather::GHCN::Options->get_profile_options($_profile_file);
