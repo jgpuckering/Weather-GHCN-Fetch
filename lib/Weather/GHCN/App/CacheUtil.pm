@@ -62,7 +62,7 @@ use Getopt::Long    qw( GetOptionsFromArray );
 use Pod::Usage;
 use Const::Fast;
 use Hash::Wrap      {-lvalue => 1, -defined => 1, -as => '_wrap_hash'};
-use Path::Tiny;
+use Path::Tiny 0.122;
 use Weather::GHCN::Common       qw(commify);
 use Weather::GHCN::Station;
 use Weather::GHCN::StationTable;
