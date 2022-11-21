@@ -15,6 +15,7 @@ v0.0.011       ????-??-??
   - removed check for valid cachedir that was preventing ghcn_fetch working without a cache
   - eliminated uninitialized warning in kml report when a station active range has only one value (i.e. end = start)
   - fixed a problem causing ghcn_fetch to croak when both -cachedir and -profile are empty strings
+  - fixed 91_ghcn_fetch.t 'output to clipboard' test, which was failing during dzil release
 
 
 v0.0.010       2022-11-10
