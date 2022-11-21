@@ -77,7 +77,7 @@ use if $OSNAME eq 'MSWin32', 'Win32::Clipboard';
 # is it ok to use Win32::Clipboard?
 our $USE_WINCLIP = $OSNAME eq 'MSWin32';
 
-my $Opt;
+our $Opt;   # declared as 'our' for r/w access from 94_ghcn_cacheutil.t
 
 ########################################################################
 # Constants
