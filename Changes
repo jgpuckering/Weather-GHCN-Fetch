@@ -1,6 +1,6 @@
 Revision history for Perl module libary Windows-GHCN-Fetch
 
-v0.0.011       ????-??-??
+v0.0.011       2022-11-21
   - restored printing of reasons for rejection
   - improved warnings for filter and active range missing data
   - refactored StationTable _report_gaps to create _find_gaps
