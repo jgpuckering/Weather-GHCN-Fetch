@@ -76,6 +76,10 @@ Take a list of stations found by B<ghcn_fetch>, examines the active
 date range, and produces a count of stations that were active in
 each year of the range.
 
+=item B<ghcn_cacheutil>
+
+Used to list or remove files in your local file cache folder.
+
 =back
 
 The output from all scripts is tab-separated and designed for easy
