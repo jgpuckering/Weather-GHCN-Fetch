@@ -292,7 +292,7 @@ or cold) temperature during the wave.
 sub report_extremes_daycounts ($limit, $ndays, $cmp_op) {
     my %years;
 
-    my $daycount_col_head = sprintf '%d-day waves %s %dC', $ndays, $cmp_op, $limit;
+    my $daycount_col_head = sprintf '%d-day waves %s %0.1f C', $ndays, $cmp_op, $limit;
     say join $TAB, 'StnId', 'Location', 'Year', 'YMD', $daycount_col_head, 'Avg C', 'Max C';
 
     foreach my $xw_aref (@ExtremeWaves) {
@@ -333,7 +333,7 @@ year, and a count of the number of waves detected during that year.
 
 sub report_extremes_per_year ($limit, $ndays, $cmp_op) {
     my $type = $Opt->cold ? 'Coldwaves' : 'Heatwaves';
-    my $title = sprintf '%d-day waves %s %dC', $ndays, $cmp_op, $limit;
+    my $title = sprintf '%d-day waves %s %0.1f C', $ndays, $cmp_op, $limit;
     say join $TAB, 'StnId', 'Location', 'Year', $title;
 
     my %years;
@@ -378,7 +378,7 @@ Then all options can be accessed used $Opt->option notation.
 sub get_options ($argv_aref) {
 
     my @options = (
-        'limit=f',              # lower bound of extremes daily temperature
+        'limit=s',              # lower bound of extremes daily temperature
         'ndays=i',              # number of consecutive days needed to be a extremes
         'peryear',              # report number of heatwaves per year
         'cold',                 # report coldwaves instead of heatwaves
@@ -396,6 +396,10 @@ sub get_options ($argv_aref) {
 
     GetOptionsFromArray($argv_aref, \%opt, @options)
         or pod2usage(2);
+
+    if ( $opt{limit} && $opt{limit} =~ m{ ( [-]? \d* (?: [.] \d+)? ) F }xms ) {
+        $opt{limit} = ($1 - 32.0) / 1.8;
+    }
 
     # Make %opt into an object and name it the same as what we usually
     # call the global options object.  Note that this doesn't set the
