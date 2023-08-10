@@ -378,7 +378,7 @@ Then all options can be accessed used $Opt->option notation.
 sub get_options ($argv_aref) {
 
     my @options = (
-        'limit=i',              # lower bound of extremes daily temperature
+        'limit=f',              # lower bound of extremes daily temperature
         'ndays=i',              # number of consecutive days needed to be a extremes
         'peryear',              # report number of heatwaves per year
         'cold',                 # report coldwaves instead of heatwaves

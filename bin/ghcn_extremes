@@ -20,7 +20,7 @@ ghcn_extremes - Report temperature extremes from ghcn_fetch output
 
 =head1 SYNOPSIS
 
-    ghcn_extremes [-limit <int>] [-ndays <int>]
+    ghcn_extremes [-limit <float>] [-ndays <int>]
                   [-peryear] [-daycounts] [-cold] [-nogaps]
                   [-outclip] [ file... ]
 
@@ -70,7 +70,7 @@ options may appear after filenames.
 
 =over 4
 
-=item -limit <int>
+=item -limit <float>
 
 Sets the limit (in degrees Celsius) at or above which the TMAX temperature
 for the day is counted as part of a heatwave.  Defaults to 30 Celsius.

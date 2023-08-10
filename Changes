@@ -1,9 +1,11 @@
-Revision history for Perl module libary Windows-GHCN-Fetch
+Revision history for Perl module library Windows-GHCN-Fetch
 
-v0.0.012       ????-??-??
+v0.0.012       2023-08-10
   - 91_ghcn_fetch.t failed on perl 5.30.1 -- may be a spurious failure due to clipboard update timing
     - added sleep 1 to give the clipboard more time to update
     - made this a soft failure so the entire build doesn't get flagged red (failed)
+  - added ghcn_cache to the list of apps in the POD of Weather::GHCN::Fetch
+  - change -limit in ghcn_extremes to take a float instead of int for fractional degrees C
 
 v0.0.011       2022-11-21
   - restored printing of reasons for rejection
